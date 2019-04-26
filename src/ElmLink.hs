@@ -1,12 +1,15 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -16,105 +19,91 @@
 {-# OPTIONS_GHC -Wno-partial-type-signatures #-}
 module ElmLink where
 
+import Protolude hiding (All, Infix, Type)
+
 import qualified Data.Aeson as Aeson
-import Data.Proxy
 import Data.String
 import Data.Text (Text)
-import qualified Data.Text as Text
-import GHC.Generics as Generics
+import Generics.SOP as SOP
+import qualified GHC.Generics as GHC
 
-{-
-  Haskell type -> JSON/String (Aeson, custom)
-  JSON/String -> Elm type (elmDecoder)
-
-  Elm type -> JSON/String (elmEncoder)
-  JSON/String -> Haskell type (Aeson, custom)
--}
-
-newtype ModuleName = ModuleName Text
-  deriving IsString
-
-data QName = QName
-  { moduleName :: !ModuleName
-  , name :: !Text
-  }
-
-instance IsString QName where
-  fromString s = 
-    let
-      (m, n) =
-        Text.breakOnEnd "." $ fromString s
-    in
-    QName (ModuleName m) n
-
-
-data ElmDef = ElmDef
-  { moduleName :: !ModuleName
-  , code :: ElmCode
-  }
-
-data ElmCode
-  = Code !Text
-  | Name !QName
-  | Empty
-  | Codes ElmCode ElmCode
-  | Type ElmType
-
-instance Semigroup ElmCode where
-  (<>) = Codes
-
-instance Monoid ElmCode where
-  mempty = Empty
-
-data ElmType
-  = TypeRef !QName
-  | TypeApp ElmType ElmType
-
-instance IsString ElmType where
-  fromString = TypeRef . fromString
-
--------------
+import Language.Elm.Definition (Definition)
+import qualified Language.Elm.Definition as Definition
+import Language.Elm.Expression (Expression)
+import qualified Language.Elm.Expression as Expression
+import qualified Language.Elm.Name as Name
+import Language.Elm.Type (Type)
+import qualified Language.Elm.Type as Type
 
 class HasElmType a where
-  elmType :: ElmType
-  default elmType :: (Generic a, GHasElmType (Rep a)) => ElmType
-  elmType =
-    gElmType @(Rep a)
+  elmType :: Type Name.Qualified
+  default elmType :: HasElmDefinition a => Type Name.Qualified
+  elmType = pure $ Definition.name $ elmDefinition @a
 
-class HasElmDef a where
-  elmDef :: ElmDef
-  default elmDef :: (Generic a, GHasElmDef (Rep a)) => ElmDef
-  elmDef =
-    gElmDef @(Rep a)
+class HasElmDefinition a where
+  elmDefinition :: Definition
 
-class HasElmType a => HasElmDecoder a value where
-  elmDecoder :: ElmCode
-  default elmDecoder :: (Generic a, GHasElmDecoder (Rep a) value) => ElmCode
-  elmDecoder =
-    gElmDecoder @(Rep a) @value
+deriveElmTypeDefinition :: forall a. (HasDatatypeInfo a, All2 HasElmType (Code a)) => Name.Qualified -> Definition
+deriveElmTypeDefinition name =
+  case datatypeInfo (Proxy @a) of
+    ADT _mname _tname (Record _cname fields :* Nil) ->
+      Definition.Alias name (Type.Record (recordFields fields))
 
-class HasElmType a => HasElmEncoder a value where
-  elmEncoder :: ElmCode
-  default elmEncoder :: (Generic a, GHasElmEncoder (Rep a) value) => ElmCode
-  elmEncoder =
-    gElmEncoder @(Rep a) @value
+    ADT _mname _tname cs ->
+      Definition.Type name (constructors cs)
 
-class GHasElmType (f :: * -> *) where
-  gElmType :: ElmType
+    Newtype _mname _tname c ->
+      Definition.Type name (constructors (c :* Nil))
+  where
+    recordFields :: All HasElmType xs => NP FieldInfo xs -> [(Name.Field, Type Name.Qualified)]
+    recordFields Nil = []
+    recordFields (f :* fs) = field f : recordFields fs
 
-class GHasElmDef (f :: * -> *) where
-  gElmDef :: ElmDef
+    field :: forall x. HasElmType x => FieldInfo x -> (Name.Field, Type Name.Qualified)
+    field (FieldInfo fname) =
+      (fromString fname, elmType @x)
 
-class GHasElmDef' (f :: * -> *) where
-  gElmDef' :: ElmCode
+    constructors :: All2 HasElmType xss => NP ConstructorInfo xss -> [(Name.Constructor, [Type Name.Qualified])]
+    constructors Nil = []
+    constructors (c :* cs) = constructor c : constructors cs
 
-class GHasElmDecoder (f :: * -> *) value where
-  gElmDecoder :: ElmCode
+    constructor :: forall xs. All HasElmType xs => ConstructorInfo xs -> (Name.Constructor, [Type Name.Qualified])
+    constructor (Constructor cname) = (fromString cname, constructorFields $ shape @_ @xs)
+    constructor (Infix _ _ _) = panic "Infix constructors are not supported"
+    constructor (Record cname fs) = (fromString cname, [Type.Record $ recordFields fs])
 
-class GHasElmEncoder (f :: * -> *) value where
-  gElmEncoder :: ElmCode
+    constructorFields :: All HasElmType xs => Shape xs -> [Type Name.Qualified]
+    constructorFields ShapeNil = []
+    constructorFields s@(ShapeCons _) = go s
+      where
+        go :: forall x xs. (HasElmType x, All HasElmType xs) => Shape (x ': xs) -> [Type Name.Qualified]
+        go (ShapeCons s') = elmType @x : constructorFields s'
+
+class HasElmDecoderDefinition value a where
+  elmDecoderDefinition :: Definition
+
+class HasElmEncoderDefinition value a where
+  elmEncoderDefinition :: Definition
+
+class HasElmType a => HasElmDecoder value a where
+  elmDecoder :: Expression Name.Qualified
+  default elmDecoder :: HasElmDecoderDefinition value a => Expression Name.Qualified
+  elmDecoder = pure $ Definition.name $ elmDecoderDefinition @value @a
+
+class HasElmType a => HasElmEncoder value a where
+  elmEncoder :: Expression Name.Qualified
+  default elmEncoder :: HasElmEncoderDefinition value a => Expression Name.Qualified
+  elmEncoder = pure $ Definition.name $ elmEncoderDefinition @value @a
 
 -------------
+
+instance HasElmType Int where
+  elmType =
+    "Basics.Int"
+
+instance HasElmType Double where
+  elmType =
+    "Basics.Float"
 
 instance HasElmType Text where
   elmType =
@@ -122,77 +111,55 @@ instance HasElmType Text where
 
 instance HasElmEncoder Text Text where
   elmEncoder =
-    Name "Basics.identity"
+    "Basics.identity"
 
 instance HasElmDecoder Text Text where
   elmDecoder =
-    Name "Basics.identity"
+    "Basics.identity"
 
-instance HasElmEncoder Text Aeson.Value where
+instance HasElmEncoder Aeson.Value Text where
   elmEncoder =
-    Name "Json.Encode.string"
+    "Json.Encode.string"
 
-instance HasElmDecoder Text Aeson.Value where
+instance HasElmDecoder Aeson.Value Text where
   elmDecoder =
-    Name "Json.Decode.string"
+    "Json.Decode.string"
 
 instance HasElmType a => HasElmType (Maybe a) where
   elmType =
-    TypeApp "Maybe.Maybe" (elmType @a)
+    Type.App "Maybe.Maybe" (elmType @a)
 
-instance HasElmEncoder a Aeson.Value => HasElmEncoder (Maybe a) Aeson.Value where
-  elmEncoder
-    = Name "Maybe.Extra.unwrap" <> Name "Json.Encode.null" <> elmEncoder @a @Aeson.Value
+instance HasElmEncoder Aeson.Value a => HasElmEncoder Aeson.Value (Maybe a) where
+  elmEncoder =
+    Expression.apps "Maybe.Extra.unwrap" ["Json.Encode.null", elmEncoder @Aeson.Value @a]
+
+instance HasElmDecoder Aeson.Value a => HasElmDecoder Aeson.Value (Maybe a) where
+  elmDecoder =
+    Expression.App "Json.Decode.nullable" (elmDecoder @Aeson.Value @a)
 
 instance HasElmType a => HasElmType [a] where
   elmType =
-    TypeApp "List.List" (elmType @a)
-
-
--------------
-
--- Data type
-instance (Datatype d, GHasElmDef' a) => GHasElmDef (D1 d a) where
-  gElmDef =
-    let
-      mname = fromString $ Generics.moduleName (undefined :: M1 _ d _ _)
-
-      tname = Code $ fromString $ Generics.datatypeName (undefined :: M1 _ d _ _)
-    in
-    ElmDef
-      { moduleName = mname
-      , code = tname <> Code "=" <> gElmDef' @a
-      }
-
--- Single constructor
-instance (Constructor c, GHasElmDef' a) => GHasElmDef' (C1 c a) where
-  gElmDef' =
-    let
-      cname = fromString $ Generics.conName (undefined :: M1 _ c _ _)
-    in
-    Code cname <> gElmDef' @a
-
--- Multiple constructors
-instance (GHasElmDef' f, GHasElmDef' g) => GHasElmDef' (f :+: g) where
-  gElmDef' =
-    gElmDef' @f <> Code "|" <> gElmDef' @g
-
--- No constructor fields
-instance GHasElmDef' U1 where
-  gElmDef' = Empty
-
--- Multiple constructor fields
-instance (GHasElmDef' f, GHasElmDef' g) => GHasElmDef' (f :*: g) where
-  gElmDef' =
-    gElmDef' @f <> gElmDef' @g
-
--- Recursion
-instance (HasElmType a) => GHasElmDef' (Rec0 a) where
-  gElmDef' = Type $ elmType @a
+    Type.App "List.List" (elmType @a)
 
 -------------
 
-data Test = A Int Float | B Text
-  deriving (Generic)
+data Test = A Int Double | B Text
+  deriving (GHC.Generic)
 
-instance HasElmDef Test where
+instance SOP.Generic Test
+instance HasDatatypeInfo Test
+
+instance HasElmDefinition Test where
+  elmDefinition = deriveElmTypeDefinition @Test "Modul.Test"
+
+instance HasElmType Test where
+
+data Rec = Rec { x :: Int, y :: Maybe Int }
+  deriving (GHC.Generic)
+
+instance SOP.Generic Rec
+instance HasDatatypeInfo Rec
+
+instance HasElmDefinition Rec where
+  elmDefinition = deriveElmTypeDefinition @Rec "Modul.Rec"
+instance HasElmType Rec where

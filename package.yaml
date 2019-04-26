@@ -22,7 +22,23 @@ description:         Please see the README on GitHub at <https://github.com/gith
 dependencies:
 - aeson
 - base >= 4.7 && < 5
+- bound
+- deriving-compat
 - text
+- generics-sop
+- protolude
+
+ghc-options:
+  - -Wall
+  - -Wcompat
+  - -Widentities
+  - -Wincomplete-record-updates
+  - -Wincomplete-uni-patterns
+  - -Wmissing-home-modules
+  - -Wpartial-fields
+  - -Wredundant-constraints
+  - -Wtabs
+  - -funbox-strict-fields
 
 library:
   source-dirs: src
