@@ -117,7 +117,6 @@ deriveElmTypeDefinition options name =
 
 -- TODO use options
 -- sumEncoding
--- omitNothingFields
 deriveElmJsonDecoder
   :: forall a
   . (HasDatatypeInfo a, HasElmType a, All2 (HasElmDecoder Aeson.Value) (Code a))
@@ -218,19 +217,34 @@ deriveElmJsonDecoder options decoderName =
     recordFields' (f :* fs) e =
       recordFields' fs $ recordField f e
 
+    isMaybe :: forall t. HasElmType t => Bool
+    isMaybe =
+      case Type.appsView $ elmType @t of
+        (Type.Global "Maybe.Maybe", _) -> True
+        _ -> False
+
     recordField
       :: forall x v
       . HasElmDecoder Aeson.Value x
       => FieldInfo x
       -> Expression v
       -> Expression v
-    recordField (FieldInfo fname) e =
-      e Expression.|>
-        Expression.apps
-          "Json.Decode.Pipeline.required"
-          [ Expression.String $ toS $ Aeson.fieldLabelModifier options fname
-          , elmDecoder @Aeson.Value @x
-          ]
+    recordField (FieldInfo fname) e
+      | Aeson.omitNothingFields options && isMaybe @x =
+        e Expression.|>
+          Expression.apps
+            "Json.Decode.Pipeline.optional"
+            [ Expression.String $ toS $ Aeson.fieldLabelModifier options fname
+            , elmDecoder @Aeson.Value @x
+            , "Maybe.Maybe.Nothing"
+            ]
+      | otherwise =
+        e Expression.|>
+          Expression.apps
+            "Json.Decode.Pipeline.required"
+            [ Expression.String $ toS $ Aeson.fieldLabelModifier options fname
+            , elmDecoder @Aeson.Value @x
+            ]
 
     unwrappedRecordField
       :: forall x v
