@@ -1,13 +1,15 @@
 module Language.Elm.Definition where
 
+import Protolude hiding (Type)
+
 import qualified Language.Elm.Name as Name
 import Language.Elm.Expression
 import Language.Elm.Type
 
 data Definition
-  = Constant !Name.Qualified (Type Name.Qualified) (Expression Name.Qualified)
-  | Type !Name.Qualified [(Name.Constructor, [Type Name.Qualified])]
-  | Alias !Name.Qualified (Type Name.Qualified)
+  = Constant !Name.Qualified (Type Void) (Expression Void)
+  | Type !Name.Qualified [(Name.Constructor, [Type Void])]
+  | Alias !Name.Qualified (Type Void)
   deriving (Eq, Ord, Show)
 
 name :: Definition -> Name.Qualified

@@ -24,9 +24,10 @@ dependencies:
 - base >= 4.7 && < 5
 - bound
 - deriving-compat
-- text
 - generics-sop
 - protolude
+- text
+- unordered-containers
 
 ghc-options:
   - -Wall
