@@ -1,3 +1,3 @@
-# Changelog for elm-link
+# Changelog for haskell-to-elm
 
 ## Unreleased changes

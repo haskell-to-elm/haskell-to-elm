@@ -17,7 +17,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# OPTIONS_GHC -Wno-partial-type-signatures #-}
-module ElmLink where
+module HaskellToElm where
 
 import Protolude hiding (All, Infix, Type)
 

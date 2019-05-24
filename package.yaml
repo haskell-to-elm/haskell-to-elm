@@ -1,10 +1,10 @@
-name:                elm-link
+name:                haskell-to-elm
 version:             0.1.0.0
-github:              "githubuser/elm-link"
+github:              "folq/haskell-to-elm"
 license:             BSD3
-author:              "Author name here"
-maintainer:          "example@example.com"
-copyright:           "2019 Author name here"
+author:              "Olle Fredriksson"
+maintainer:          "fredriksson.olle@gmail.com"
+copyright:           "2019 Olle Fredriksson"
 
 extra-source-files:
 - README.md
@@ -17,7 +17,7 @@ extra-source-files:
 # To avoid duplicated efforts in documentation and dealing with the
 # complications of embedding Haddock markup inside cabal files, it is
 # common to point users to the README.md file.
-description:         Please see the README on GitHub at <https://github.com/githubuser/elm-link#readme>
+description:         Please see the README on GitHub at <https://github.com/folq/haskell-to-elm#readme>
 
 dependencies:
 - aeson
@@ -44,19 +44,8 @@ ghc-options:
 library:
   source-dirs: src
 
-executables:
-  elm-link-exe:
-    main:                Main.hs
-    source-dirs:         app
-    ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
-    dependencies:
-    - elm-link
-
 tests:
-  elm-link-test:
+  haskell-to-elm-test:
     main:                Spec.hs
     source-dirs:         test
     ghc-options:
@@ -64,4 +53,4 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - elm-link
+    - haskell-to-elm
