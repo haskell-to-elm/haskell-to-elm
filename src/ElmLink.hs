@@ -205,7 +205,13 @@ deriveElmJsonDecoder options decoderName =
         foldl'
           (Expression.|>)
           (Expression.App "Json.Decode.Pipeline.decode" qualifiedConstr)
-          constrFields
+          [Expression.apps
+            "Json.Decode.Pipeline.index"
+            [ Expression.Int index
+            , field
+            ]
+          | (index, field) <- zip [0..] constrFields
+          ]
 
     decodeConstructors constrs
       | Aeson.allNullaryToStringTag options && allNullary constrs =
@@ -413,3 +419,20 @@ instance HasElmDecoderDefinition Aeson.Value Rec where
   elmDecoderDefinition = deriveElmJsonDecoder @Rec Aeson.defaultOptions { Aeson.fieldLabelModifier = drop 1 } "Modul.decodeRec"
 
 instance HasElmDecoder Aeson.Value Rec
+
+data SingleConstructor = SingleConstructor Bool Int
+  deriving (GHC.Generic)
+
+instance SOP.Generic SingleConstructor
+instance HasDatatypeInfo SingleConstructor
+
+instance Aeson.ToJSON SingleConstructor where
+  toEncoding = Aeson.genericToEncoding Aeson.defaultOptions
+
+instance HasElmDefinition SingleConstructor where
+  elmDefinition = deriveElmTypeDefinition @SingleConstructor defaultOptions { fieldLabelModifier = drop 1 } "Modul.SingleConstructor"
+
+instance HasElmDecoderDefinition Aeson.Value SingleConstructor where
+  elmDecoderDefinition = deriveElmJsonDecoder @SingleConstructor Aeson.defaultOptions { Aeson.fieldLabelModifier = drop 1 } "Modul.decodeSingleConstructor"
+
+instance HasElmType SingleConstructor where
