@@ -301,9 +301,37 @@ instance HasElmType Int where
   elmType =
     "Basics.Int"
 
+instance HasElmEncoder Aeson.Value Int where
+  elmEncoder =
+    "Json.Encode.int"
+
+instance HasElmDecoder Aeson.Value Int where
+  elmDecoder =
+    "Json.Decode.int"
+
 instance HasElmType Double where
   elmType =
     "Basics.Float"
+
+instance HasElmEncoder Aeson.Value Double where
+  elmEncoder =
+    "Json.Encode.double"
+
+instance HasElmDecoder Aeson.Value Double where
+  elmDecoder =
+    "Json.Decode.double"
+
+instance HasElmType Bool where
+  elmType =
+    "Basics.Bool"
+
+instance HasElmEncoder Aeson.Value Bool where
+  elmEncoder =
+    "Json.Encode.bool"
+
+instance HasElmDecoder Aeson.Value Bool where
+  elmDecoder =
+    "Json.Decode.bool"
 
 instance HasElmType Text where
   elmType =
@@ -316,22 +344,6 @@ instance HasElmEncoder Text Text where
 instance HasElmDecoder Text Text where
   elmDecoder =
     "Basics.identity"
-
-instance HasElmEncoder Aeson.Value Int where
-  elmEncoder =
-    "Json.Encode.int"
-
-instance HasElmDecoder Aeson.Value Int where
-  elmDecoder =
-    "Json.Decode.int"
-
-instance HasElmEncoder Aeson.Value Double where
-  elmEncoder =
-    "Json.Encode.double"
-
-instance HasElmDecoder Aeson.Value Double where
-  elmDecoder =
-    "Json.Decode.double"
 
 instance HasElmEncoder Aeson.Value Text where
   elmEncoder =
