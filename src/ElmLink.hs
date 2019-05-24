@@ -118,7 +118,6 @@ deriveElmTypeDefinition options name =
 -- TODO use options
 -- sumEncoding
 -- omitNothingFields
--- unwrapUnaryRecords
 deriveElmJsonDecoder
   :: forall a
   . (HasDatatypeInfo a, HasElmType a, All2 (HasElmDecoder Aeson.Value) (Code a))
@@ -151,6 +150,39 @@ deriveElmJsonDecoder options decoderName =
         _ ->
           panic "Can't automatically derive JSON decoder for an anonymous Elm type"
 
+    constructors
+      :: All2 (HasElmDecoder Aeson.Value) xss
+      => NP ConstructorInfo xss
+      -> [(String, [Expression v])]
+    constructors Nil = []
+    constructors (c :* cs) = constructor c : constructors cs
+
+    constructor
+      :: forall xs v
+      . All (HasElmDecoder Aeson.Value) xs
+      => ConstructorInfo xs
+      -> (String, [Expression v])
+    constructor (Constructor cname) =
+      (cname, constructorFields $ shape @_ @xs)
+    constructor (Infix _ _ _) =
+      panic "Infix constructors are not supported"
+    constructor (Record cname fs) =
+      (cname, [recordFields fs $ explicitRecordConstructor $ recordFieldNames fs])
+
+    constructorFields
+      :: All (HasElmDecoder Aeson.Value) xs
+      => Shape xs
+      -> [Expression v]
+    constructorFields ShapeNil = []
+    constructorFields s@(ShapeCons _) = go s
+      where
+        go
+          :: forall x xs v
+          . (HasElmDecoder Aeson.Value x, All (HasElmDecoder Aeson.Value) xs)
+          => Shape (x ': xs)
+          -> [Expression v]
+        go (ShapeCons s') = elmDecoder @Aeson.Value @x : constructorFields s'
+
     explicitRecordConstructor
       :: [Name.Field]
       -> Expression v
@@ -171,9 +203,20 @@ deriveElmJsonDecoder options decoderName =
       => NP FieldInfo xs
       -> Expression v
       -> Expression v
-    recordFields Nil e = e
-    recordFields (f :* fs) e =
-      recordFields fs $ recordField f e
+    recordFields (f :* Nil)
+      | Aeson.unwrapUnaryRecords options =
+        unwrappedRecordField f
+    recordFields fs =
+        recordFields' fs
+
+    recordFields'
+      :: All (HasElmDecoder Aeson.Value) xs
+      => NP FieldInfo xs
+      -> Expression v
+      -> Expression v
+    recordFields' Nil e = e
+    recordFields' (f :* fs) e =
+      recordFields' fs $ recordField f e
 
     recordField
       :: forall x v
@@ -181,8 +224,22 @@ deriveElmJsonDecoder options decoderName =
       => FieldInfo x
       -> Expression v
       -> Expression v
-    recordField (FieldInfo _) e =
-      e Expression.|> Expression.App "Json.Decode.Pipeline.required" (elmDecoder @Aeson.Value @x)
+    recordField (FieldInfo fname) e =
+      e Expression.|>
+        Expression.apps
+          "Json.Decode.Pipeline.required"
+          [ Expression.String $ toS $ Aeson.fieldLabelModifier options fname
+          , elmDecoder @Aeson.Value @x
+          ]
+
+    unwrappedRecordField
+      :: forall x v
+      . HasElmDecoder Aeson.Value x
+      => FieldInfo x
+      -> Expression v
+      -> Expression v
+    unwrappedRecordField (FieldInfo _) e =
+      e Expression.|> elmDecoder @Aeson.Value @x
 
     recordFieldNames
       :: All (HasElmDecoder Aeson.Value) xs
@@ -233,73 +290,42 @@ deriveElmJsonDecoder options decoderName =
           )
 
       | otherwise =
-        Expression.App "Json.Decode.field" (Expression.String "tag") Expression.|> Expression.Lam
-          (Bound.toScope $ Expression.Case (pure $ Bound.B ()) $
-            [ ( Pattern.String $ constructorJSONName constr
-              , Bound.toScope $
-                case fmap (Bound.F . Bound.F) <$> fields of
-                  [field] ->
-                    Expression.App "Json.Decode.Pipeline.decode" qualifiedConstr Expression.|>
-                      Expression.apps "Json.Decode.Pipeline.required" [Expression.String "contents", field]
-                  fields' ->
-                    foldl'
-                      (Expression.|>)
-                      (Expression.App "Json.Decode.Pipeline.decode" qualifiedConstr)
-                      [Expression.apps
-                        "Json.Decode.Pipeline.required"
-                        [ Expression.String "contents"
-                        , Expression.apps "Json.Decode.index" [Expression.Int index, field]
-                        ]
-                      | (index, field) <- zip [0..] fields'
-                      ]
+        case Aeson.sumEncoding options of
+          Aeson.TaggedObject tagName contentsName ->
+            Expression.App "Json.Decode.field" (Expression.String $ toS tagName) Expression.|> Expression.Lam
+              (Bound.toScope $ Expression.Case (pure $ Bound.B ()) $
+                [ ( Pattern.String $ constructorJSONName constr
+                  , Bound.toScope $
+                    case fmap (Bound.F . Bound.F) <$> fields of
+                      [field] ->
+                        Expression.App "Json.Decode.Pipeline.decode" qualifiedConstr Expression.|>
+                          Expression.apps "Json.Decode.Pipeline.required" [Expression.String (toS contentsName), field]
+                      fields' ->
+                        foldl'
+                          (Expression.|>)
+                          (Expression.App "Json.Decode.Pipeline.decode" qualifiedConstr)
+                          [Expression.apps
+                            "Json.Decode.Pipeline.required"
+                            [ Expression.String (toS contentsName)
+                            , Expression.apps "Json.Decode.index" [Expression.Int index, field]
+                            ]
+                          | (index, field) <- zip [0..] fields'
+                          ]
+                  )
+                | (constr, fields) <- constrs
+                , let
+                    qualifiedConstr =
+                      Expression.Global $ Name.Qualified moduleName_ $ toS constr
+                ]
+                ++
+                [ ( Pattern.Wildcard
+                  , Bound.toScope $ Expression.App "Json.Decode.fail" $ Expression.String "No matching constructor"
+                  )
+                ]
               )
-            | (constr, fields) <- constrs
-            , let
-                qualifiedConstr =
-                  Expression.Global $ Name.Qualified moduleName_ $ toS constr
-            ]
-            ++
-            [ ( Pattern.Wildcard
-              , Bound.toScope $ Expression.App "Json.Decode.fail" $ Expression.String "No matching constructor"
-              )
-            ]
-          )
 
     allNullary :: forall c f. [(c, [f])] -> Bool
     allNullary = all (null . snd)
-
-    constructors
-      :: All2 (HasElmDecoder Aeson.Value) xss
-      => NP ConstructorInfo xss
-      -> [(String, [Expression v])]
-    constructors Nil = []
-    constructors (c :* cs) = constructor c : constructors cs
-
-    constructor
-      :: forall xs v
-      . All (HasElmDecoder Aeson.Value) xs
-      => ConstructorInfo xs
-      -> (String, [Expression v])
-    constructor (Constructor cname) =
-      (cname, constructorFields $ shape @_ @xs)
-    constructor (Infix _ _ _) =
-      panic "Infix constructors are not supported"
-    constructor (Record cname fs) =
-      (cname, [recordFields fs $ explicitRecordConstructor $ recordFieldNames fs])
-
-    constructorFields
-      :: All (HasElmDecoder Aeson.Value) xs
-      => Shape xs
-      -> [Expression v]
-    constructorFields ShapeNil = []
-    constructorFields s@(ShapeCons _) = go s
-      where
-        go
-          :: forall x xs v
-          . (HasElmDecoder Aeson.Value x, All (HasElmDecoder Aeson.Value) xs)
-          => Shape (x ': xs)
-          -> [Expression v]
-        go (ShapeCons s') = elmDecoder @Aeson.Value @x : constructorFields s'
 
 -------------
 
@@ -436,3 +462,22 @@ instance HasElmDecoderDefinition Aeson.Value SingleConstructor where
   elmDecoderDefinition = deriveElmJsonDecoder @SingleConstructor Aeson.defaultOptions { Aeson.fieldLabelModifier = drop 1 } "Modul.decodeSingleConstructor"
 
 instance HasElmType SingleConstructor where
+
+
+data SingleFieldRecord = SingleFieldRecord { _singleField :: Int }
+  deriving (GHC.Generic)
+
+instance SOP.Generic SingleFieldRecord
+instance HasDatatypeInfo SingleFieldRecord
+
+instance Aeson.ToJSON SingleFieldRecord where
+  toEncoding = Aeson.genericToEncoding Aeson.defaultOptions { Aeson.fieldLabelModifier = drop 1, Aeson.unwrapUnaryRecords = False }
+  toJSON = Aeson.genericToJSON Aeson.defaultOptions { Aeson.fieldLabelModifier = drop 1, Aeson.unwrapUnaryRecords = False }
+
+instance HasElmDefinition SingleFieldRecord where
+  elmDefinition = deriveElmTypeDefinition @SingleFieldRecord defaultOptions { fieldLabelModifier = drop 1 } "Modul.SingleFieldRecord"
+
+instance HasElmDecoderDefinition Aeson.Value SingleFieldRecord where
+  elmDecoderDefinition = deriveElmJsonDecoder @SingleFieldRecord Aeson.defaultOptions { Aeson.fieldLabelModifier = drop 1, Aeson.unwrapUnaryRecords = False } "Modul.decodeSingleFieldRecord"
+
+instance HasElmType SingleFieldRecord where
