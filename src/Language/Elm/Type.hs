@@ -13,6 +13,7 @@ data Type v
   = Var v
   | Global Name.Qualified
   | App (Type v) (Type v)
+  | Fun (Type v) (Type v)
   | Record [(Name.Field, Type v)]
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
@@ -24,6 +25,7 @@ instance Monad Type where
   Var v >>= f = f v
   Global g >>= _ = Global g
   App t1 t2 >>= f = App (t1 >>= f) (t2 >>= f)
+  Fun t1 t2 >>= f = Fun (t1 >>= f) (t2 >>= f)
   Record fields >>= f = Record [(n, t >>= f) | (n, t) <- fields]
 
 instance IsString (Type v) where
