@@ -1,6 +1,6 @@
 # haskell-to-elm
 
-Work-in-progress library for generating Elm types definitions, encoders, and
+Work-in-progress library for generating Elm type definitions, encoders, and
 decoders from Haskell types. The goal is to be able to generate nice and
 precise types on the Elm side.
 
