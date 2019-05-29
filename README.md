@@ -15,3 +15,4 @@ precise types on the Elm side.
 - [elm-export](http://hackage.haskell.org/package/elm-export)
 - [elm-bridge](http://hackage.haskell.org/package/elm-bridge)
 - [elm-street](http://hackage.haskell.org/package/elm-street)
+- [elminator](https://github.com/sras/elminator)
