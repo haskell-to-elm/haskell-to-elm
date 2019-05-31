@@ -10,8 +10,8 @@ precise types on the Elm side.
   - [ ] Support all Aeson options
 - [x] Pretty-print the Elm AST
 - [ ] Generate Elm modules
-- [ ] Test that encoding and decoding round-trip with different Aeson settings
 - [ ] Servant client library generation
+- [ ] Test that encoding and decoding round-trip with different Aeson settings
 - [ ] Module organisation, ergonomics
 
 ## Related projects
