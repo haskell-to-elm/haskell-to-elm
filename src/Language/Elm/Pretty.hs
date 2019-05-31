@@ -3,10 +3,11 @@
 {-# language ViewPatterns #-}
 module Language.Elm.Pretty where
 
-import Protolude hiding (Type, local, list)
+import Protolude hiding (Type, local, list, moduleName)
 
 import qualified Bound
 import qualified Bound.Var as Bound
+import Data.HashMap.Lazy (HashMap)
 import qualified Data.HashMap.Lazy as HashMap
 import qualified Data.HashSet as HashSet
 import Data.String
@@ -30,8 +31,8 @@ data Environment v = Environment
   , freshLocals :: [Name.Local]
   }
 
-empty :: Environment Void
-empty = Environment
+emptyEnvironment :: Environment Void
+emptyEnvironment = Environment
   { locals = absurd
   , freshLocals = (fromString . pure <$> ['a'..'z']) ++ [fromString $ [x] <> show n | x <- ['a'..'z'], n <- [(0 :: Int)..]]
   }
@@ -94,16 +95,20 @@ constructor :: Name.Constructor -> Doc ann
 constructor (Name.Constructor c) =
   pretty c
 
+moduleName :: Name.Module -> Doc ann
+moduleName ms =
+  mconcat (intersperse dot $ pretty <$> ms)
+
 qualified :: Name.Qualified -> Doc ann
-qualified name@(Name.Qualified modules l) =
+qualified name@(Name.Qualified ms l) =
   case defaultImport name of
     Nothing ->
-      case modules of
+      case ms of
         [] ->
           pretty l
 
         _ ->
-          mconcat (intersperse dot $ pretty <$> modules) <> dot <> pretty l
+          moduleName ms <> dot <> pretty l
     Just l' ->
       local l'
 
@@ -253,6 +258,52 @@ twoLineOperator qname =
 
     _ ->
       False
+
+-------------------------------------------------------------------------------
+-- Modules
+
+modules :: [Definition] -> HashMap Name.Module (Doc ann)
+modules defs =
+  let
+    defsByModule =
+      foldl'
+        (HashMap.unionWith (<>))
+        mempty
+        [ HashMap.singleton m [def]
+        | def <- defs
+        , let
+            (Name.Qualified m _) =
+              Definition.name def
+        ]
+  in
+  HashMap.mapWithKey module_ defsByModule
+
+module_ :: Name.Module -> [Definition] -> Doc ann
+module_ mname defs =
+  let
+    usedNames =
+      HashSet.fromList
+        [ Name.Local name
+        | Name.Qualified _ name <- Definition.name <$> defs
+        ]
+
+    env =
+      emptyEnvironment
+        { freshLocals = filter (not . (`HashSet.member` usedNames)) $ freshLocals emptyEnvironment
+        }
+
+    imports =
+      sort $
+      HashSet.toList $
+      HashSet.filter (/= mname) $
+      HashSet.map (\(Name.Qualified m _) -> m) $
+      HashSet.filter (isNothing . defaultImport) $
+      foldMap (Definition.foldMapGlobals HashSet.singleton) defs
+  in
+  "module" <+> moduleName mname <+> "exposing (..)" <> line <> line <>
+  mconcat ["import" <+> moduleName import_ <> line | import_ <- imports] <> line <> line <>
+  mconcat (intersperse (line <> line <> line) [definition env def | def <- defs])
+
 
 -------------------------------------------------------------------------------
 -- Definitions

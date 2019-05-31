@@ -1,3 +1,6 @@
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Language.Elm.Name where
@@ -10,10 +13,12 @@ import qualified Data.Text as Text
 type Module = [Text]
 
 newtype Local = Local Text
-  deriving (Eq, Ord, Show, IsString, Hashable)
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving newtype IsString
+  deriving anyclass (Hashable)
 
 data Qualified = Qualified Module Text
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic, Hashable)
 
 instance IsString Qualified where
   fromString s =
@@ -25,7 +30,11 @@ instance IsString Qualified where
         Qualified xs x
 
 newtype Field = Field Text
-  deriving (Eq, Ord, Show, IsString, Hashable)
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving newtype IsString
+  deriving anyclass (Hashable)
 
 newtype Constructor = Constructor Text
-  deriving (Eq, Ord, Show, IsString)
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving newtype IsString
+  deriving anyclass (Hashable)
