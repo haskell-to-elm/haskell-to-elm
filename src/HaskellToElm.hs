@@ -235,7 +235,7 @@ deriveElmJSONDecoder options aesonOptions decoderName =
             "Json.Decode.Pipeline.optional"
             [ jsonFieldName fname
             , elmDecoder @Aeson.Value @x
-            , "Maybe.Maybe.Nothing"
+            , "Maybe.Nothing"
             ]
 
       | otherwise =
