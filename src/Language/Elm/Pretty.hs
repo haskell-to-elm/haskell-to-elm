@@ -233,6 +233,21 @@ fixity qname =
     noneAssoc n =
       Just (n + 1, n, n + 1)
 
+twoLineOperator :: Name.Qualified -> Bool
+twoLineOperator qname =
+  case qname of
+    "Basics.>>" ->
+      True
+
+    "Basics.<<" ->
+      True
+
+    "Basics.|>" ->
+      True
+
+    "Basics.<|" ->
+      True
+
 -------------------------------------------------------------------------------
 -- Definitions
 
@@ -276,7 +291,9 @@ expression env prec expr =
           case args of
             [arg1, arg2] ->
               parensWhen (prec > opPrec) $
-                expression env leftPrec arg1 <+> pretty name <+> expression env rightPrec arg2
+                expression env leftPrec arg1 <+> pretty name <>
+                (if twoLineOperator qname then line else space) <>
+                expression env rightPrec arg2
 
             arg1:arg2:args' ->
               apps env prec (Expression.apps (Expression.Global qname) [arg1, arg2]) args'
