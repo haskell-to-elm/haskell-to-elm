@@ -6,9 +6,13 @@ precise types on the Elm side.
 
 ## Roadmap
 
+- [x] Derive JSON encoders and generically
+  - [ ] Support all Aeson options
 - [ ] Pretty-print the Elm AST
 - [ ] Generate Elm modules
 - [ ] Test that encoding and decoding round-trip with different Aeson settings
+- [ ] Servant client library generation
+- [ ] Module organisation, ergonomics
 
 ## Related projects
 
