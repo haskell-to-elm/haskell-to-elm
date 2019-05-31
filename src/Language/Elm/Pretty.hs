@@ -219,7 +219,7 @@ expression env prec expr =
         (
         mconcat $
         intersperse (line <> line) $
-          [ pattern env' 0 pat <+> "->" <+> expression env' 0 (Bound.fromScope scope)
+          [ pattern env' 0 pat <+> "->" <> line <> indent 4 (expression env' 0 (Bound.fromScope scope))
           | (pat, scope) <- branches
           , let
               env' =
