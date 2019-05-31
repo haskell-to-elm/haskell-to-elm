@@ -29,9 +29,9 @@ data Expression v
   | Proj Name.Field
   | Case (Expression v) [(Pattern Int, Scope Int Expression v)]
   | List [Expression v]
-  | String Text
-  | Int Int
-  | Float Double
+  | String !Text
+  | Int !Integer
+  | Float !Double
   deriving (Functor, Foldable, Traversable)
 
 instance Applicative Expression where

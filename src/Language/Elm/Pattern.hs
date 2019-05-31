@@ -12,5 +12,6 @@ data Pattern v
   | Wildcard
   | Con Name.Qualified [Pattern v]
   | String !Text
-  | Number !Double
+  | Int !Integer
+  | Float !Double
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
