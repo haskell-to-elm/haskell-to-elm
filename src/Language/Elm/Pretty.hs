@@ -29,12 +29,14 @@ import qualified Language.Elm.Type as Type
 data Environment v = Environment
   { locals :: v -> Name.Local
   , freshLocals :: [Name.Local]
+  , currentModule :: Name.Module
   }
 
-emptyEnvironment :: Environment Void
-emptyEnvironment = Environment
+emptyEnvironment :: Name.Module -> Environment Void
+emptyEnvironment m = Environment
   { locals = absurd
   , freshLocals = (fromString . pure <$> ['a'..'z']) ++ [fromString $ [x] <> show n | x <- ['a'..'z'], n <- [(0 :: Int)..]]
+  , currentModule = m
   }
 
 extend :: Environment v -> (Environment (Bound.Var () v), Name.Local)
@@ -99,16 +101,21 @@ moduleName :: Name.Module -> Doc ann
 moduleName ms =
   mconcat (intersperse dot $ pretty <$> ms)
 
-qualified :: Name.Qualified -> Doc ann
-qualified name@(Name.Qualified ms l) =
+qualified :: Environment v -> Name.Qualified -> Doc ann
+qualified env name@(Name.Qualified ms l) =
   case defaultImport name of
-    Nothing ->
-      case ms of
-        [] ->
-          pretty l
+    Nothing
+      | ms == currentModule env ->
+        pretty l
 
-        _ ->
-          moduleName ms <> dot <> pretty l
+      | otherwise ->
+        case ms of
+          [] ->
+            pretty l
+
+          _ ->
+            moduleName ms <> dot <> pretty l
+
     Just l' ->
       local l'
 
@@ -288,8 +295,8 @@ module_ mname defs =
         ]
 
     env =
-      emptyEnvironment
-        { freshLocals = filter (not . (`HashSet.member` usedNames)) $ freshLocals emptyEnvironment
+      (emptyEnvironment mname)
+        { freshLocals = filter (not . (`HashSet.member` usedNames)) $ freshLocals (emptyEnvironment mname)
         }
 
     imports =
@@ -315,7 +322,7 @@ definition env def =
       let
         (names, body) = lambdas env e
       in
-      pretty name <+> ":" <+> type_ 0 t <> line <>
+      pretty name <+> ":" <+> type_ env 0 t <> line <>
       (case names of
         [] ->
           pretty name <+> "="
@@ -329,11 +336,11 @@ definition env def =
         indent 4 ("=" <+>
           mconcat
             (intersperse (line <> "| ")
-              [constructor c <+> hsep (type_ (appPrec + 1) <$> ts) | (c, ts) <- constrs]))
+              [constructor c <+> hsep (type_ env (appPrec + 1) <$> ts) | (c, ts) <- constrs]))
 
     Definition.Alias (Name.Qualified _ name) t ->
       "type alias" <+> pretty name <+> "=" <> line <>
-      indent 4 (type_ 0 t)
+      indent 4 (type_ env 0 t)
 
 -------------------------------------------------------------------------------
 -- Expressions
@@ -350,7 +357,7 @@ expression env prec expr =
     (Expression.appsView -> (Expression.Global qname@(Name.Qualified _ name), args)) ->
       case fixity qname of
         Nothing ->
-          atomExpressionApps env prec (qualified qname) args
+          atomExpressionApps env prec (qualified env qname) args
 
         Just (leftPrec, opPrec, rightPrec) ->
           case args of
@@ -500,11 +507,11 @@ pattern env prec pat =
       "_"
 
     Pattern.Con con [] ->
-      qualified con
+      qualified env con
 
     Pattern.Con con pats ->
       parensWhen (prec > appPrec) $
-        qualified con <+> hsep (pattern env (appPrec + 1) <$> pats)
+        qualified env con <+> hsep (pattern env (appPrec + 1) <$> pats)
 
     Pattern.String s ->
       "\"" <> pretty s <> "\""
@@ -518,33 +525,33 @@ pattern env prec pat =
 -------------------------------------------------------------------------------
 -- Types
 
-type_ :: Int -> Type Void -> Doc ann
-type_ prec t =
+type_ :: Environment v -> Int -> Type v -> Doc ann
+type_ env prec t =
   case t of
-    Type.Var v ->
-      absurd v
+    Type.Var var ->
+      local $ locals env var
 
     (Type.appsView -> (Type.Global qname@(Name.Qualified _ name), args)) ->
       case fixity qname of
         Nothing ->
-          atomTypeApps prec (qualified qname) args
+          atomTypeApps env prec (qualified env qname) args
 
         Just (leftPrec, opPrec, rightPrec) ->
           case args of
             [arg1, arg2] ->
               parensWhen (prec > opPrec) $
-                type_ leftPrec arg1 <+> pretty name <>
+                type_ env leftPrec arg1 <+> pretty name <>
                 (if twoLineOperator qname then line else space) <>
-                type_ rightPrec arg2
+                type_ env rightPrec arg2
 
             arg1:arg2:args' ->
-              typeApps prec (Type.apps (Type.Global qname) [arg1, arg2]) args'
+              typeApps env prec (Type.apps (Type.Global qname) [arg1, arg2]) args'
 
             _ ->
-              atomTypeApps prec (parens $ pretty name) args
+              atomTypeApps env prec (parens $ pretty name) args
 
     (Type.appsView -> (fun, args@(_:_))) ->
-      typeApps prec fun args
+      typeApps env prec fun args
 
     Type.Global _ ->
       panic "Language.Elm.Pretty type_ Global"
@@ -554,33 +561,33 @@ type_ prec t =
 
     Type.Fun t1 t2 ->
       parensWhen (prec > funPrec) $
-        type_ (funPrec + 1) t1 <+> "->" <+> type_ funPrec t2
+        type_ env (funPrec + 1) t1 <+> "->" <+> type_ env funPrec t2
 
     Type.Record fields ->
       encloseSep "{ " " }" ", "
-        [ field f <+> ":" <+> type_ 0 type'
+        [ field f <+> ":" <+> type_ env 0 type'
         | (f, type') <- fields
         ]
 
-typeApps :: Int -> Type Void -> [Type Void] -> Doc ann
-typeApps prec fun args =
+typeApps :: Environment v -> Int -> Type v -> [Type v] -> Doc ann
+typeApps env prec fun args =
   case args of
     [] ->
-      type_ prec fun
+      type_ env prec fun
 
     _ ->
       parensWhen (prec > appPrec) $
-        type_ appPrec fun <+> hsep (type_ (appPrec + 1) <$> args)
+        type_ env appPrec fun <+> hsep (type_ env (appPrec + 1) <$> args)
 
-atomTypeApps :: Int -> Doc ann -> [Type Void] -> Doc ann
-atomTypeApps prec fun args =
+atomTypeApps :: Environment v -> Int -> Doc ann -> [Type v] -> Doc ann
+atomTypeApps env prec fun args =
   case args of
     [] ->
       fun
 
     _ ->
       parensWhen (prec > appPrec) $
-        fun <+> hsep (type_ (appPrec + 1) <$> args)
+        fun <+> hsep (type_ env (appPrec + 1) <$> args)
 
 -------------------------------------------------------------------------------
 -- Utils

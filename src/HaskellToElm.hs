@@ -641,13 +641,13 @@ instance SOP.Generic Test
 instance HasDatatypeInfo Test
 
 instance HasElmDefinition Test where
-  elmDefinition = deriveElmTypeDefinition @Test defaultOptions { fieldLabelModifier = drop 1 } "Modul.Test"
+  elmDefinition = deriveElmTypeDefinition @Test defaultOptions { fieldLabelModifier = drop 1 } "Test.Test"
 
 instance HasElmDecoderDefinition Aeson.Value Test where
-  elmDecoderDefinition = deriveElmJSONDecoder @Test defaultOptions Aeson.defaultOptions { Aeson.fieldLabelModifier = drop 1 } "Modul.decodeTest"
+  elmDecoderDefinition = deriveElmJSONDecoder @Test defaultOptions Aeson.defaultOptions { Aeson.fieldLabelModifier = drop 1 } "Test.decode"
 
 instance HasElmEncoderDefinition Aeson.Value Test where
-  elmEncoderDefinition = deriveElmJSONEncoder @Test defaultOptions Aeson.defaultOptions { Aeson.fieldLabelModifier = drop 1 } "Modul.encodeTest"
+  elmEncoderDefinition = deriveElmJSONEncoder @Test defaultOptions Aeson.defaultOptions { Aeson.fieldLabelModifier = drop 1 } "Test.encode"
 
 instance HasElmType Test where
 
@@ -658,13 +658,13 @@ instance SOP.Generic Test2
 instance HasDatatypeInfo Test2
 
 instance HasElmDefinition Test2 where
-  elmDefinition = deriveElmTypeDefinition @Test2 defaultOptions { fieldLabelModifier = drop 1 } "Modul.Test2"
+  elmDefinition = deriveElmTypeDefinition @Test2 defaultOptions { fieldLabelModifier = drop 1 } "Test2.Test2"
 
 instance HasElmDecoderDefinition Aeson.Value Test2 where
-  elmDecoderDefinition = deriveElmJSONDecoder @Test2 defaultOptions Aeson.defaultOptions { Aeson.fieldLabelModifier = drop 1 } "Modul.decodeTest2"
+  elmDecoderDefinition = deriveElmJSONDecoder @Test2 defaultOptions Aeson.defaultOptions { Aeson.fieldLabelModifier = drop 1 } "Test2.decode"
 
 instance HasElmEncoderDefinition Aeson.Value Test2 where
-  elmEncoderDefinition = deriveElmJSONEncoder @Test2 defaultOptions Aeson.defaultOptions { Aeson.fieldLabelModifier = drop 1 } "Modul.encodeTest2"
+  elmEncoderDefinition = deriveElmJSONEncoder @Test2 defaultOptions Aeson.defaultOptions { Aeson.fieldLabelModifier = drop 1 } "Test2.encode"
 
 instance HasElmType Test2 where
 
@@ -675,14 +675,14 @@ instance SOP.Generic Rec
 instance HasDatatypeInfo Rec
 
 instance HasElmDefinition Rec where
-  elmDefinition = deriveElmTypeDefinition @Rec defaultOptions { fieldLabelModifier = drop 1 } "Modul.Rec"
+  elmDefinition = deriveElmTypeDefinition @Rec defaultOptions { fieldLabelModifier = drop 1 } "Rec.Rec"
 instance HasElmType Rec where
 
 instance HasElmDecoderDefinition Aeson.Value Rec where
-  elmDecoderDefinition = deriveElmJSONDecoder @Rec defaultOptions { fieldLabelModifier = drop 1 } Aeson.defaultOptions { Aeson.fieldLabelModifier = drop 1 } "Modul.decodeRec"
+  elmDecoderDefinition = deriveElmJSONDecoder @Rec defaultOptions { fieldLabelModifier = drop 1 } Aeson.defaultOptions { Aeson.fieldLabelModifier = drop 1 } "Rec.decode"
 
 instance HasElmEncoderDefinition Aeson.Value Rec where
-  elmEncoderDefinition = deriveElmJSONEncoder @Rec defaultOptions { fieldLabelModifier = drop 1 } Aeson.defaultOptions { Aeson.fieldLabelModifier = drop 1 } "Modul.encodeRec"
+  elmEncoderDefinition = deriveElmJSONEncoder @Rec defaultOptions { fieldLabelModifier = drop 1 } Aeson.defaultOptions { Aeson.fieldLabelModifier = drop 1 } "Rec.encode"
 
 instance HasElmDecoder Aeson.Value Rec
 
@@ -696,13 +696,13 @@ instance Aeson.ToJSON SingleConstructor where
   toEncoding = Aeson.genericToEncoding Aeson.defaultOptions
 
 instance HasElmDefinition SingleConstructor where
-  elmDefinition = deriveElmTypeDefinition @SingleConstructor defaultOptions { fieldLabelModifier = drop 1 } "Modul.SingleConstructor"
+  elmDefinition = deriveElmTypeDefinition @SingleConstructor defaultOptions { fieldLabelModifier = drop 1 } "SingleConstructor.SingleConstructor"
 
 instance HasElmDecoderDefinition Aeson.Value SingleConstructor where
-  elmDecoderDefinition = deriveElmJSONDecoder @SingleConstructor defaultOptions { fieldLabelModifier = drop 1 } Aeson.defaultOptions { Aeson.fieldLabelModifier = drop 1 } "Modul.decodeSingleConstructor"
+  elmDecoderDefinition = deriveElmJSONDecoder @SingleConstructor defaultOptions { fieldLabelModifier = drop 1 } Aeson.defaultOptions { Aeson.fieldLabelModifier = drop 1 } "SingleConstructor.decode"
 
 instance HasElmEncoderDefinition Aeson.Value SingleConstructor where
-  elmEncoderDefinition = deriveElmJSONEncoder @SingleConstructor defaultOptions { fieldLabelModifier = drop 1 } Aeson.defaultOptions { Aeson.fieldLabelModifier = drop 1 } "Modul.encodeSingleConstructor"
+  elmEncoderDefinition = deriveElmJSONEncoder @SingleConstructor defaultOptions { fieldLabelModifier = drop 1 } Aeson.defaultOptions { Aeson.fieldLabelModifier = drop 1 } "SingleConstructor.encode"
 
 instance HasElmType SingleConstructor where
 
@@ -717,13 +717,13 @@ instance Aeson.ToJSON SingleFieldRecord where
   toJSON = Aeson.genericToJSON Aeson.defaultOptions { Aeson.fieldLabelModifier = drop 1, Aeson.unwrapUnaryRecords = False }
 
 instance HasElmDefinition SingleFieldRecord where
-  elmDefinition = deriveElmTypeDefinition @SingleFieldRecord defaultOptions { fieldLabelModifier = drop 1 } "Modul.SingleFieldRecord"
+  elmDefinition = deriveElmTypeDefinition @SingleFieldRecord defaultOptions { fieldLabelModifier = drop 1 } "SingleFieldRecord.SingleFieldRecord"
 
 instance HasElmDecoderDefinition Aeson.Value SingleFieldRecord where
-  elmDecoderDefinition = deriveElmJSONDecoder @SingleFieldRecord defaultOptions { fieldLabelModifier = drop 1 } Aeson.defaultOptions { Aeson.fieldLabelModifier = drop 1, Aeson.unwrapUnaryRecords = False } "Modul.decodeSingleFieldRecord"
+  elmDecoderDefinition = deriveElmJSONDecoder @SingleFieldRecord defaultOptions { fieldLabelModifier = drop 1 } Aeson.defaultOptions { Aeson.fieldLabelModifier = drop 1, Aeson.unwrapUnaryRecords = False } "SingleFieldRecord.decode"
 
 instance HasElmEncoderDefinition Aeson.Value SingleFieldRecord where
-  elmEncoderDefinition = deriveElmJSONEncoder @SingleFieldRecord defaultOptions { fieldLabelModifier = drop 1 } Aeson.defaultOptions { Aeson.fieldLabelModifier = drop 1, Aeson.unwrapUnaryRecords = False } "Modul.encodeSingleFieldRecord"
+  elmEncoderDefinition = deriveElmJSONEncoder @SingleFieldRecord defaultOptions { fieldLabelModifier = drop 1 } Aeson.defaultOptions { Aeson.fieldLabelModifier = drop 1, Aeson.unwrapUnaryRecords = False } "SingleFieldRecord.encode"
 
 instance HasElmType SingleFieldRecord where
 
