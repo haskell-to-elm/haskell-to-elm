@@ -318,7 +318,7 @@ type_ prec t =
 
     Type.App t1 t2 ->
       parensWhen (prec > appPrec) $
-        type_ appPrec t1 <+> "->" <+> type_ (appPrec + 1) t2
+        type_ appPrec t1 <+> type_ (appPrec + 1) t2
 
     Type.Fun t1 t2 ->
       parensWhen (prec > funPrec) $
