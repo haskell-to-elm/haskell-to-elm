@@ -537,7 +537,7 @@ deriveElmJSONEncoder options aesonOptions encoderName =
                 Expression.List
                   [ Expression.tuple
                     (Expression.String (toS tagName))
-                    (Expression.String $ constructorJSONName constr)
+                    (Expression.App "Json.Encode.string" $ Expression.String $ constructorJSONName constr)
                   , Expression.tuple
                     (Expression.String (toS contentsName)) $
                       Expression.App "Json.Encode.list" $
