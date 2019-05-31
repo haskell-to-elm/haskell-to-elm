@@ -312,26 +312,27 @@ deriveElmJSONDecoder options aesonOptions decoderName =
     decodeConstructors constrs =
       case Aeson.sumEncoding aesonOptions of
         Aeson.TaggedObject tagName contentsName ->
-          Expression.App "Json.Decode.field" (Expression.String $ toS tagName) Expression.|> Expression.Lam
-            (Bound.toScope $ Expression.Case (pure $ Bound.B ()) $
-              [ ( Pattern.String $ constructorJSONName constr
-                , Bound.toScope $
-                  case fmap (Bound.F . Bound.F) <$> fields of
-                    [field] ->
-                      Expression.App "Json.Decode.Pipeline.decode" qualifiedConstr Expression.|>
-                        Expression.apps "Json.Decode.Pipeline.required" [Expression.String (toS contentsName), field]
-                    fields' ->
-                      foldl'
-                        (Expression.|>)
-                        (Expression.App "Json.Decode.Pipeline.decode" qualifiedConstr)
-                        [Expression.apps
-                          "Json.Decode.Pipeline.required"
-                          [ Expression.String (toS contentsName)
-                          , Expression.apps "Json.Decode.index" [Expression.Int index, field]
+          Expression.apps "Json.Decode.field" [Expression.String $ toS tagName, "Json.Decode.string"] Expression.|>
+            Expression.App "Json.Decode.andThen" (Expression.Lam
+              (Bound.toScope $ Expression.Case (pure $ Bound.B ()) $
+                [ ( Pattern.String $ constructorJSONName constr
+                  , Bound.toScope $
+                    case fmap (Bound.F . Bound.F) <$> fields of
+                      [field] ->
+                        Expression.App "Json.Decode.Pipeline.decode" qualifiedConstr Expression.|>
+                          Expression.apps "Json.Decode.Pipeline.required" [Expression.String (toS contentsName), field]
+                      fields' ->
+                        foldl'
+                          (Expression.|>)
+                          (Expression.App "Json.Decode.Pipeline.decode" qualifiedConstr)
+                          [Expression.apps
+                            "Json.Decode.Pipeline.required"
+                            [ Expression.String (toS contentsName)
+                            , Expression.apps "Json.Decode.index" [Expression.Int index, field]
+                            ]
+                          | (index, field) <- zip [0..] fields'
                           ]
-                        | (index, field) <- zip [0..] fields'
-                        ]
-                )
+                  )
               | (constr, fields) <- constrs
               , let
                   qualifiedConstr =
@@ -342,7 +343,7 @@ deriveElmJSONDecoder options aesonOptions decoderName =
                 , Bound.toScope $ Expression.App "Json.Decode.fail" $ Expression.String "No matching constructor"
                 )
               ]
-            )
+            ))
 
         _ -> panic "Only the DataAeson.TaggedObject sumEncoding is currently supported"
 
