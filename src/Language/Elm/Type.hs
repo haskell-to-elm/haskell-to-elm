@@ -31,6 +31,9 @@ instance Monad Type where
 instance IsString (Type v) where
   fromString = Global . fromString
 
+apps :: Type v -> [Type v] -> Type v
+apps = foldl' App
+
 appsView :: Type v -> (Type v, [Type v])
 appsView = go mempty
   where
