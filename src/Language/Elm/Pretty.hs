@@ -2,12 +2,13 @@
 {-# language OverloadedStrings #-}
 module Language.Elm.Pretty where
 
-import Protolude hiding (local, list)
+import Protolude hiding (Type, local, list)
 
 import qualified Bound
 import qualified Bound.Var as Bound
 import qualified Data.HashMap.Lazy as HashMap
 import qualified Data.HashSet as HashSet
+import Data.String
 import Data.Text.Prettyprint.Doc
 
 import Language.Elm.Definition (Definition)
@@ -17,10 +18,21 @@ import qualified Language.Elm.Expression as Expression
 import qualified Language.Elm.Name as Name
 import Language.Elm.Pattern (Pattern)
 import qualified Language.Elm.Pattern as Pattern
+import Language.Elm.Type (Type)
+import qualified Language.Elm.Type as Type
+
+-------------------------------------------------------------------------------
+-- Environments
 
 data Environment v = Environment
   { locals :: v -> Name.Local
   , freshLocals :: [Name.Local]
+  }
+
+empty :: Environment Void
+empty = Environment
+  { locals = absurd
+  , freshLocals = (fromString . pure <$> ['a'..'z']) ++ [fromString $ [x] <> show n | x <- ['a'..'z'], n <- [(0 :: Int)..]]
   }
 
 extend :: Environment v -> (Environment (Bound.Var () v), Name.Local)
@@ -66,6 +78,8 @@ extendPat env pat =
     , freshLocals = freshLocals'
     }
 
+-------------------------------------------------------------------------------
+-- Names
 
 local :: Name.Local -> Doc ann
 local (Name.Local l) =
@@ -75,11 +89,28 @@ field :: Name.Field -> Doc ann
 field (Name.Field f) =
   pretty f
 
+constructor :: Name.Constructor -> Doc ann
+constructor (Name.Constructor c) =
+  pretty c
+
+qualified :: Name.Qualified -> Doc ann
+qualified name@(Name.Qualified modules l) =
+  case defaultImport name of
+    Nothing ->
+      case modules of
+        [] ->
+          pretty l
+
+        _ ->
+          mconcat (intersperse dot $ pretty <$> modules) <> dot <> pretty l
+    Just l' ->
+      local l'
+
 defaultImport :: Name.Qualified -> Maybe Name.Local
 defaultImport qname =
   case qname of
-    -- Name.Qualified ["Basics"] name ->
-    --   Just $ Name.Local name
+    Name.Qualified ["Basics"] name ->
+      Just $ Name.Local name
 
     "List.List" ->
       Just "List"
@@ -113,18 +144,32 @@ defaultImport qname =
 
     _ -> Nothing
 
-qualified :: Name.Qualified -> Doc ann
-qualified name@(Name.Qualified modules l) =
-  case defaultImport name of
-    Nothing ->
-      case modules of
-        [] ->
-          pretty l
+-------------------------------------------------------------------------------
+-- Definitions
 
-        _ ->
-          mconcat (intersperse dot $ pretty <$> modules) <> dot <> pretty l
-    Just l' ->
-      local l'
+definition :: Environment Void -> Definition -> Doc ann
+definition env def =
+  case def of
+    Definition.Constant (Name.Qualified _ name) t e ->
+      let
+        (names, body) = lambdas env e
+      in
+      pretty name <+> ":" <+> type_ 0 t <> line <>
+      pretty name <+> hsep (local <$> names) <+> "=" <+> body
+
+    Definition.Type (Name.Qualified _ name) constrs ->
+      "type" <+> pretty name <> line <>
+        indent 4 ("=" <+>
+          mconcat
+            (intersperse (line <> "| ")
+              [constructor c <+> hsep (type_ (appPrec + 1) <$> ts) | (c, ts) <- constrs]))
+
+    Definition.Alias (Name.Qualified _ name) t ->
+      "type alias" <+> pretty name <+> "=" <> line <>
+      indent 4 (type_ 0 t)
+
+-------------------------------------------------------------------------------
+-- Expressions
 
 expression :: Environment v -> Int -> Expression v -> Doc ann
 expression env prec expr =
@@ -231,6 +276,9 @@ lambdas env expr =
     _ ->
       ([], expression env lamPrec expr)
 
+-------------------------------------------------------------------------------
+-- Patterns
+
 pattern :: Environment (Bound.Var Int v) -> Int -> Pattern Int -> Doc ann
 pattern env prec pat =
   case pat of
@@ -256,6 +304,35 @@ pattern env prec pat =
     Pattern.Float f ->
       pretty f
 
+-------------------------------------------------------------------------------
+-- Types
+
+type_ :: Int -> Type Void -> Doc ann
+type_ prec t =
+  case t of
+    Type.Var v ->
+      absurd v
+
+    Type.Global name ->
+      qualified name
+
+    Type.App t1 t2 ->
+      parensWhen (prec > appPrec) $
+        type_ appPrec t1 <+> "->" <+> type_ (appPrec + 1) t2
+
+    Type.Fun t1 t2 ->
+      parensWhen (prec > funPrec) $
+        type_ (funPrec + 1) t1 <+> "->" <+> type_ funPrec t2
+
+    Type.Record fields ->
+      encloseSep "{ " " }" ", "
+        [ field f <+> ":" <+> type_ 0 type'
+        | (f, type') <- fields
+        ]
+
+-------------------------------------------------------------------------------
+-- Utils
+
 parensWhen :: Bool -> Doc ann -> Doc ann
 parensWhen b =
   if b then
@@ -264,8 +341,9 @@ parensWhen b =
   else
     identity
 
-appPrec, letPrec, lamPrec, casePrec :: Int
+appPrec, letPrec, lamPrec, casePrec, funPrec :: Int
 appPrec = 10
 letPrec = 0
 lamPrec = 0
 casePrec = 0
+funPrec = 0
