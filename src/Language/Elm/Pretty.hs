@@ -1,5 +1,6 @@
 {-# language NoImplicitPrelude #-}
 {-# language OverloadedStrings #-}
+{-# language ViewPatterns #-}
 module Language.Elm.Pretty where
 
 import Protolude hiding (Type, local, list)
@@ -144,6 +145,94 @@ defaultImport qname =
 
     _ -> Nothing
 
+fixity :: Name.Qualified -> Maybe (Int, Int, Int)
+fixity qname =
+  case qname of
+    "Basics.>>" ->
+      leftAssoc 9
+
+    "Basics.<<" ->
+      rightAssoc 9
+
+    "Basics.^" ->
+      rightAssoc 8
+
+    "Basics.*" ->
+      leftAssoc 7
+
+    "Basics./" ->
+      leftAssoc 7
+
+    "Basics.//" ->
+      leftAssoc 7
+
+    "Basics.%" ->
+      leftAssoc 7
+
+    "Basics.+" ->
+      leftAssoc 6
+
+    "Basics.-" ->
+      leftAssoc 6
+
+    "Parser.|=" ->
+      leftAssoc 5
+
+    Name.Qualified ["Parser"] "|." ->
+      leftAssoc 6
+
+    "Basics.++" ->
+      rightAssoc 5
+
+    "Basics.++" ->
+      rightAssoc 5
+
+    "List.::" ->
+      rightAssoc 5
+
+    "Basics.==" ->
+      noneAssoc 4
+
+    "Basics./=" ->
+      noneAssoc 4
+
+    "Basics.<" ->
+      noneAssoc 4
+
+    "Basics.>" ->
+      noneAssoc 4
+
+    "Basics.<=" ->
+      noneAssoc 4
+
+    "Basics.>=" ->
+      noneAssoc 4
+
+    "Basics.&&" ->
+      rightAssoc 3
+
+    "Basics.||" ->
+      leftAssoc 3
+
+    "Basics.|>" ->
+      leftAssoc 0
+
+    "Basics.<|" ->
+      rightAssoc 0
+
+    _ ->
+      Nothing
+
+  where
+    leftAssoc n =
+      Just (n, n, n + 1)
+
+    rightAssoc n =
+      Just (n, n, n + 1)
+
+    noneAssoc n =
+      Just (n + 1, n, n + 1)
+
 -------------------------------------------------------------------------------
 -- Definitions
 
@@ -155,7 +244,8 @@ definition env def =
         (names, body) = lambdas env e
       in
       pretty name <+> ":" <+> type_ 0 t <> line <>
-      pretty name <+> hsep (local <$> names) <+> "=" <+> body
+      pretty name <+> hsep (local <$> names) <+> "=" <> line <>
+      indent 4 body
 
     Definition.Type (Name.Qualified _ name) constrs ->
       "type" <+> pretty name <> line <>
@@ -177,12 +267,31 @@ expression env prec expr =
     Expression.Var var ->
       local $ locals env var
 
-    Expression.Global name ->
-      qualified name
+    (Expression.appsView -> (Expression.Global qname@(Name.Qualified _ name), args)) ->
+      case fixity qname of
+        Nothing ->
+          atomApps env prec (qualified qname) args
 
-    Expression.App expr1 expr2 ->
-      parensWhen (prec > appPrec) $
-        expression env appPrec expr1 <+> expression env (appPrec + 1) expr2
+        Just (leftPrec, opPrec, rightPrec) ->
+          case args of
+            [arg1, arg2] ->
+              parensWhen (prec > opPrec) $
+                expression env leftPrec arg1 <+> pretty name <+> expression env rightPrec arg2
+
+            arg1:arg2:args' ->
+              apps env prec (Expression.apps (Expression.Global qname) [arg1, arg2]) args'
+
+            _ ->
+              atomApps env prec (parens $ pretty name) args
+
+    (Expression.appsView -> (fun, args@(_:_))) ->
+      apps env prec fun args
+
+    Expression.Global _ ->
+      panic "Language.Elm.Pretty expression Global"
+
+    Expression.App {} ->
+      panic "Language.Elm.Pretty expression App"
 
     Expression.Let {} ->
       parensWhen (prec > letPrec) $
@@ -238,6 +347,26 @@ expression env prec expr =
 
     Expression.Float f ->
       pretty f
+
+apps :: Environment v -> Int -> Expression v -> [Expression v] -> Doc ann
+apps env prec fun args =
+  case args of
+    [] ->
+      expression env prec fun
+
+    _ ->
+      parensWhen (prec > appPrec) $
+        expression env appPrec fun <+> hsep (expression env (appPrec + 1) <$> args)
+
+atomApps :: Environment v -> Int -> Doc ann -> [Expression v] -> Doc ann
+atomApps env prec fun args =
+  case args of
+    [] ->
+      fun
+
+    _ ->
+      parensWhen (prec > appPrec) $
+        fun <+> hsep (expression env (appPrec + 1) <$> args)
 
 lets :: Environment v -> Expression v -> ([Doc ann], Doc ann)
 lets env expr =

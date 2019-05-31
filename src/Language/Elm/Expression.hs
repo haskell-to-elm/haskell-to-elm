@@ -66,6 +66,17 @@ instance IsString (Expression v) where
 apps :: Foldable f => Expression v -> f (Expression v) -> Expression v
 apps = foldl App
 
+appsView :: Expression v -> (Expression v, [Expression v])
+appsView = go mempty
+  where
+    go args expr =
+      case expr of
+        App e1 e2 ->
+          go (e2 : args) e1
+
+        _ ->
+          (expr, args)
+
 (|>) :: Expression v -> Expression v -> Expression v
 (|>) e1 e2 = apps "Basics.|>" [e1, e2]
 
