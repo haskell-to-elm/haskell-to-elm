@@ -8,7 +8,7 @@ precise types on the Elm side.
 
 - [x] Derive JSON encoders and generically
   - [ ] Support all Aeson options
-- [ ] Pretty-print the Elm AST
+- [x] Pretty-print the Elm AST
 - [ ] Generate Elm modules
 - [ ] Test that encoding and decoding round-trip with different Aeson settings
 - [ ] Servant client library generation
