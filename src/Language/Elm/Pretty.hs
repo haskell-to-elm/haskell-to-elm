@@ -220,6 +220,9 @@ fixity qname =
     "Basics.<|" ->
       rightAssoc 0
 
+    "Basics.," ->
+      Just (0, -1, 0)
+
     _ ->
       Nothing
 
