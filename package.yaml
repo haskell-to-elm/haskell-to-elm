@@ -25,6 +25,7 @@ dependencies:
 - bound
 - deriving-compat
 - generics-sop
+- prettyprinter
 - protolude
 - text
 - unordered-containers
