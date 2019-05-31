@@ -259,8 +259,13 @@ definition env def =
         (names, body) = lambdas env e
       in
       pretty name <+> ":" <+> type_ 0 t <> line <>
-      pretty name <+> hsep (local <$> names) <+> "=" <> line <>
-      indent 4 body
+      (case names of
+        [] ->
+          pretty name <+> "="
+
+        _ ->
+          pretty name <+> hsep (local <$> names) <+> "=") <>
+      line <> indent 4 body
 
     Definition.Type (Name.Qualified _ name) constrs ->
       "type" <+> pretty name <> line <>
