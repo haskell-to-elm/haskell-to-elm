@@ -420,7 +420,7 @@ deriveElmJSONEncoder options aesonOptions encoderName =
       | Aeson.unwrapUnaryRecords aesonOptions =
         unwrappedRecordField f e
     encodeRecord fs e =
-      Expression.App "JSON.Encode.object" $
+      Expression.App "Json.Encode.object" $
         case recordFields fs e of
           (nonNullable, []) ->
             Expression.List nonNullable
