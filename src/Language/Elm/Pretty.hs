@@ -344,6 +344,9 @@ expression env prec expr =
     Expression.Var var ->
       local $ locals env var
 
+    (Expression.appsView -> (Expression.Proj f, arg:args)) ->
+      atomExpressionApps env prec (expression env projPrec arg <> dot <> field f) args
+
     (Expression.appsView -> (Expression.Global qname@(Name.Qualified _ name), args)) ->
       case fixity qname of
         Nothing ->
@@ -590,9 +593,10 @@ parensWhen b =
   else
     identity
 
-appPrec, letPrec, lamPrec, casePrec, funPrec :: Int
+appPrec, letPrec, lamPrec, casePrec, funPrec, projPrec :: Int
 appPrec = 10
 letPrec = 0
 lamPrec = 0
 casePrec = 0
 funPrec = 0
+projPrec = 11

@@ -36,6 +36,7 @@ import Language.Elm.Expression (Expression)
 import qualified Language.Elm.Expression as Expression
 import qualified Language.Elm.Name as Name
 import qualified Language.Elm.Pattern as Pattern
+import qualified Language.Elm.Pretty as Pretty
 import Language.Elm.Type (Type)
 import qualified Language.Elm.Type as Type
 
@@ -725,3 +726,19 @@ instance HasElmEncoderDefinition Aeson.Value SingleFieldRecord where
   elmEncoderDefinition = deriveElmJSONEncoder @SingleFieldRecord defaultOptions { fieldLabelModifier = drop 1 } Aeson.defaultOptions { Aeson.fieldLabelModifier = drop 1, Aeson.unwrapUnaryRecords = False } "Modul.encodeSingleFieldRecord"
 
 instance HasElmType SingleFieldRecord where
+
+everything :: forall t. (HasElmDefinition t, HasElmEncoderDefinition Aeson.Value t, HasElmDecoderDefinition Aeson.Value t) => [Definition]
+everything =
+  [ elmDefinition @t
+  , elmEncoderDefinition @Aeson.Value @t
+  , elmDecoderDefinition @Aeson.Value @t
+  ]
+
+test = Pretty.modules $
+  concat $
+  [ everything @Test
+  , everything @Test2
+  , everything @Rec
+  , everything @SingleConstructor
+  , everything @SingleFieldRecord
+  ]
