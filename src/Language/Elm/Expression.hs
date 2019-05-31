@@ -11,6 +11,7 @@ module Language.Elm.Expression where
 import Protolude
 
 import Bound
+import Data.Bifoldable
 import Data.Eq.Deriving
 import Data.Ord.Deriving
 import Data.String
@@ -18,6 +19,7 @@ import Text.Show.Deriving
 
 import qualified Language.Elm.Name as Name
 import Language.Elm.Pattern (Pattern)
+import qualified Language.Elm.Pattern as Pattern
 
 data Expression v
   = Var v
@@ -82,3 +84,49 @@ appsView = go mempty
 
 tuple :: Expression v -> Expression v -> Expression v
 tuple e1 e2 = apps "Basics.," [e1, e2]
+
+foldMapGlobals
+  :: Monoid m
+  => (Name.Qualified -> m)
+  -> Expression v
+  -> m
+foldMapGlobals f expr =
+  case expr of
+    Var _ ->
+      mempty
+
+    Global qname ->
+      f qname
+
+    App e1 e2 ->
+      foldMapGlobals f e1 <> foldMapGlobals f e2
+
+    Let e s ->
+      foldMapGlobals f e <> foldMapGlobals f (Bound.fromScope s)
+
+    Lam s ->
+      foldMapGlobals f (Bound.fromScope s)
+
+    Record fields ->
+      foldMap (foldMap (foldMapGlobals f)) fields
+
+    Proj _ ->
+      mempty
+
+    Case e branches ->
+      foldMapGlobals f e <>
+      foldMap
+        (bifoldMap (Pattern.foldMapGlobals f) (foldMapGlobals f . Bound.fromScope))
+        branches
+
+    List es ->
+      foldMap (foldMapGlobals f) es
+
+    String _ ->
+      mempty
+
+    Int _ ->
+      mempty
+
+    Float _ ->
+      mempty

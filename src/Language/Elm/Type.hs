@@ -44,3 +44,25 @@ appsView = go mempty
 
         _ ->
           (typ, args)
+
+foldMapGlobals
+  :: Monoid m
+  => (Name.Qualified -> m)
+  -> Type v
+  -> m
+foldMapGlobals f type_ =
+  case type_ of
+    Var _ ->
+      mempty
+
+    Global qname ->
+      f qname
+
+    App t1 t2 ->
+      foldMapGlobals f t1 <> foldMapGlobals f t2
+
+    Fun t1 t2 ->
+      foldMapGlobals f t1 <> foldMapGlobals f t2
+
+    Record fields ->
+      foldMap (foldMap (foldMapGlobals f)) fields
