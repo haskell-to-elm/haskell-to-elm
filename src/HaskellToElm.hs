@@ -283,11 +283,9 @@ deriveElmJSONDecoder options aesonOptions decoderName =
         foldl'
           (Expression.|>)
           (Expression.App "Json.Decode.Pipeline.decode" qualifiedConstr)
-          [Expression.apps
-            "Json.Decode.Pipeline.index"
-            [ Expression.Int index
-            , field
-            ]
+          [Expression.App
+            "Json.Decode.Pipeline.custom"
+            (Expression.apps "Json.Decode.index" [Expression.Int index , field])
           | (index, field) <- zip [0..] constrFields
           ]
 
@@ -323,15 +321,17 @@ deriveElmJSONDecoder options aesonOptions decoderName =
                         Expression.App "Json.Decode.Pipeline.decode" qualifiedConstr Expression.|>
                           Expression.apps "Json.Decode.Pipeline.required" [Expression.String (toS contentsName), field]
                       fields' ->
-                        foldl'
-                          (Expression.|>)
-                          (Expression.App "Json.Decode.Pipeline.decode" qualifiedConstr)
-                          [Expression.apps
-                            "Json.Decode.Pipeline.required"
-                            [ Expression.String (toS contentsName)
-                            , Expression.apps "Json.Decode.index" [Expression.Int index, field]
+                        Expression.apps
+                          "Json.Decode.field"
+                          [ Expression.String (toS contentsName)
+                          , foldl'
+                            (Expression.|>)
+                            (Expression.App "Json.Decode.Pipeline.decode" qualifiedConstr)
+                            [ Expression.App
+                              "Json.Decode.Pipeline.custom"
+                              (Expression.apps "Json.Decode.index" [Expression.Int index, field])
+                            | (index, field) <- zip [0..] fields'
                             ]
-                          | (index, field) <- zip [0..] fields'
                           ]
                   )
               | (constr, fields) <- constrs
