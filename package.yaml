@@ -30,6 +30,9 @@ dependencies:
 - text
 - unordered-containers
 
+- servant
+- servant-foreign
+
 ghc-options:
   - -Wall
   - -Wcompat
