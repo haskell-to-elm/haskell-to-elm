@@ -598,7 +598,7 @@ instance HasElmDecoder Aeson.Value Bool where
 
 instance HasElmType Text where
   elmType =
-    "String.String"
+    "String"
 
 instance HasElmEncoder Text Text where
   elmEncoder =
@@ -608,13 +608,48 @@ instance HasElmDecoder Text Text where
   elmDecoder =
     "Basics.identity"
 
+instance HasElmEncoder Text Char where
+  elmEncoder =
+    "String.fromChar"
+
+instance HasElmEncoder Text Int where
+  elmEncoder =
+    "String.fromInt"
+
 instance HasElmEncoder Aeson.Value Text where
   elmEncoder =
-    "Json.Encode.int"
+    "Json.Encode.string"
 
 instance HasElmDecoder Aeson.Value Text where
   elmDecoder =
     "Json.Decode.string"
+
+instance HasElmType Char where
+  elmType =
+    "Char"
+
+instance HasElmEncoder Aeson.Value Char where
+  elmEncoder =
+    "Json.Encode.string" Expression.<< "String.fromChar"
+
+instance HasElmDecoder Aeson.Value Char where
+  elmDecoder =
+    "Json.Decode.string" Expression.|>
+      Expression.App "Json.Decode.andThen"
+      (Expression.Lam $ Bound.toScope $
+        Expression.Case
+          (Expression.App "String.uncons" $ Expression.Var $ Bound.B ())
+          [ ( Pattern.Con "Maybe.Just" [Pattern.tuple (Pattern.Var 0) (Pattern.String "")]
+            , Bound.toScope $ Expression.App "Json.Decode.succeed" $ Expression.Var $ Bound.B 0
+            )
+          , ( Pattern.Wildcard
+            , Bound.toScope $ Expression.App "Json.Decode.fail" $ Expression.String "Not a char"
+            )
+          ]
+      )
+
+instance HasElmEncoder a b => HasElmEncoder (Maybe a) (Maybe b) where
+  elmEncoder = Expression.App "Maybe.map" (elmEncoder @a @b)
 
 instance HasElmType a => HasElmType (Maybe a) where
   elmType =
@@ -631,6 +666,14 @@ instance HasElmDecoder Aeson.Value a => HasElmDecoder Aeson.Value (Maybe a) wher
 instance HasElmType a => HasElmType [a] where
   elmType =
     Type.App "List.List" (elmType @a)
+
+instance HasElmEncoder Aeson.Value a => HasElmEncoder Aeson.Value [a] where
+  elmEncoder =
+    Expression.App "Json.Encode.list" (elmEncoder @Aeson.Value @a)
+
+instance HasElmDecoder Aeson.Value a => HasElmDecoder Aeson.Value [a] where
+  elmDecoder =
+    Expression.App "Json.Decode.list" (elmDecoder @Aeson.Value @a)
 
 -------------
 

@@ -82,6 +82,15 @@ appsView = go mempty
 (|>) :: Expression v -> Expression v -> Expression v
 (|>) e1 e2 = apps "Basics.|>" [e1, e2]
 
+(<|) :: Expression v -> Expression v -> Expression v
+(<|) e1 e2 = apps "Basics.<|" [e1, e2]
+
+(<<) :: Expression v -> Expression v -> Expression v
+(<<) e1 e2 = apps "Basics.<<" [e1, e2]
+
+(>>) :: Expression v -> Expression v -> Expression v
+(>>) e1 e2 = apps "Basics.>>" [e1, e2]
+
 tuple :: Expression v -> Expression v -> Expression v
 tuple e1 e2 = apps "Basics.," [e1, e2]
 

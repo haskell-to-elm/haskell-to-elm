@@ -2,6 +2,7 @@
 {-# language DeriveFunctor #-}
 {-# language DeriveTraversable #-}
 {-# language NoImplicitPrelude #-}
+{-# language OverloadedStrings #-}
 module Language.Elm.Pattern where
 
 import Protolude
@@ -41,3 +42,6 @@ foldMapGlobals f pat =
 
     Float _ ->
       mempty
+
+tuple :: Pattern v -> Pattern v -> Pattern v
+tuple p1 p2 = Con "Basics.," [p1, p2]
