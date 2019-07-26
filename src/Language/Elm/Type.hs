@@ -45,6 +45,10 @@ appsView = go mempty
         _ ->
           (typ, args)
 
+funs :: [Type v] -> Type v -> Type v
+funs args ret =
+  foldr Fun ret args
+
 foldMapGlobals
   :: Monoid m
   => (Name.Qualified -> m)

@@ -8,7 +8,7 @@ copyright:           "2019 Olle Fredriksson"
 
 extra-source-files:
 - README.md
-- ChangeLog.md
+- CHANGELOG.md
 
 # Metadata used when publishing your package
 # synopsis:            Short description of your package
@@ -32,6 +32,7 @@ dependencies:
 
 - servant
 - servant-foreign
+- lens
 
 ghc-options:
   - -Wall
