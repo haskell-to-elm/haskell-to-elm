@@ -598,7 +598,7 @@ instance HasElmDecoder Aeson.Value Bool where
 
 instance HasElmType Text where
   elmType =
-    "String"
+    "String.String"
 
 instance HasElmEncoder Text Text where
   elmEncoder =
@@ -626,7 +626,7 @@ instance HasElmDecoder Aeson.Value Text where
 
 instance HasElmType Char where
   elmType =
-    "Char"
+    "Char.Char"
 
 instance HasElmEncoder Aeson.Value Char where
   elmEncoder =
