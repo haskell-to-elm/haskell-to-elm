@@ -1,21 +1,25 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 module ServantToElm where
 
 import Prelude (String)
-import Protolude hiding (Type)
+import Protolude hiding (Type, moduleName)
 
 import qualified Bound
-import Control.Lens
+import Control.Lens hiding (Strict)
 import qualified Data.Aeson as Aeson
 import qualified Data.Text as Text
 import qualified Language.Elm.Pretty as Pretty
@@ -34,40 +38,57 @@ import qualified Language.Elm.Type as Type
 
 data Elm
 
-data ElmEncoder = ElmEncoder (Expression Void) (Type Void) Bool
-data ElmDecoder = ElmDecoder (Expression Void) (Type Void) Bool
+data ElmEncoder = ElmEncoder { _encoder :: Expression Void, _encodedType :: Type Void, _optional :: Bool }
+data ElmDecoder = ElmDecoder { _decoder :: Expression Void, _decodedType :: Type Void }
+
+makeEncoder :: forall value a. HasElmEncoder value a => ElmEncoder
+makeEncoder = ElmEncoder (elmEncoder @value @a) (elmType @a) False
+
+makeOptionalEncoder :: forall value a. HasElmEncoder value a => ElmEncoder
+makeOptionalEncoder = ElmEncoder (elmEncoder @value @a) (elmType @a) True
+
+makeDecoder :: forall value a. HasElmDecoder value a => ElmDecoder
+makeDecoder = ElmDecoder (elmDecoder @value @a) (elmType @a)
 
 instance HasElmEncoder Aeson.Value a => HasForeignArgument Elm '[ JSON ] ElmEncoder a where
   argumentFor Proxy Proxy Proxy Proxy =
-    (elmEncoder @Aeson.Value @a, elmType @a)
+    makeEncoder @Aeson.Value @a
 
-instance HasElmEncoder (RequiredArgument mods Text) b => HasForeignArgument Elm '[ Header' mods sym a ] ElmEncoder b where
+instance (SBoolI (FoldRequired mods), HasElmEncoder (RequiredArgument mods Text) b) => HasForeignArgument Elm '[ Header' mods sym a ] ElmEncoder b where
   argumentFor Proxy Proxy Proxy Proxy =
-    (elmEncoder @(RequiredArgument mods Text) @b, elmType @b)
+    case sbool @(FoldRequired mods) of
+      STrue ->
+        makeEncoder @(RequiredArgument mods Text) @b
+      SFalse ->
+        makeOptionalEncoder @(RequiredArgument mods Text) @b
 
-instance HasElmEncoder (RequiredArgument mods Text) b => HasForeignArgument Elm '[ QueryParam' mods sym a ] (Expression v, Type v') b where
+instance (SBoolI (FoldRequired mods), HasElmEncoder (RequiredArgument mods Text) b) => HasForeignArgument Elm '[ QueryParam' mods sym a ] ElmEncoder b where
   argumentFor Proxy Proxy Proxy Proxy =
-    (elmEncoder @(RequiredArgument mods Text) @b, elmType @b)
+    case sbool @(FoldRequired mods) of
+      STrue ->
+        makeEncoder @(RequiredArgument mods Text) @b
+      SFalse ->
+        makeOptionalEncoder @(RequiredArgument mods Text) @b
 
 instance HasElmEncoder Text a => HasForeignArgument Elm '[ Capture' mods sym a ] ElmEncoder a where
   argumentFor Proxy Proxy Proxy Proxy =
-    (elmEncoder @Text @a, elmType @a)
+    makeEncoder @Text @a
 
 instance HasElmEncoder Text a => HasForeignArgument Elm '[ CaptureAll sym a ] ElmEncoder [a] where
   argumentFor Proxy Proxy Proxy Proxy =
-    (elmEncoder @Text @a, elmType @a)
+    makeEncoder @Text @a
 
 instance HasElmEncoder Text a => HasForeignArgument Elm '[ QueryParams sym a ] ElmEncoder [a] where
   argumentFor Proxy Proxy Proxy Proxy =
-    (elmEncoder @Text @a, elmType @a)
+    makeEncoder @Text @a
 
 instance HasForeignArgument Elm '[ QueryFlag sym ] ElmEncoder Bool where
   argumentFor Proxy Proxy Proxy Proxy =
-    ("Basics.identity", "Basics.Bool")
+    ElmEncoder "Basics.identity" "Basics.Bool" False
 
 instance HasElmDecoder Aeson.Value a => HasForeignResult Elm '[ JSON ] ElmDecoder a where
   resultFor Proxy Proxy Proxy Proxy =
-    (elmDecoder @Aeson.Value @a, elmType @a)
+    makeDecoder @Aeson.Value @a
 
 instance HasElmType NoContent where
   elmType =
@@ -91,7 +112,7 @@ instance HasElmDecoder Aeson.Value NoContent where
 
 elmRequest
   :: Name.Module
-  -> Req ElmEncoder ElmEncoder
+  -> Req ElmEncoder ElmDecoder
   -> Definition
 elmRequest moduleName req =
   Definition.Constant
@@ -122,10 +143,10 @@ elmRequest moduleName req =
     elmType =
       Type.funs
         (concat
-          [ [ header ^. headerArg . argType . _2
+          [ [ _encodedType $ header ^. headerArg . argType
             | header <- req ^. reqHeaders
             ]
-          , [ arg ^. argType . _2 . _2
+          , [ _encodedType $ arg ^. argType . _2
             | Cap arg <- numberedPathSegments
             ]
           ]
@@ -135,7 +156,7 @@ elmRequest moduleName req =
     elmReturnType =
       let
         type_ =
-          maybe "Basics.()" snd (req ^. reqReturnType)
+          maybe "Basics.()" _decodedType (req ^. reqReturnType)
       in
       Type.App "Platform.Cmd.Cmd" (Type.apps "Result.Result" ["Http.Error", type_])
 
@@ -181,31 +202,87 @@ elmRequest moduleName req =
         "Http.request"
         (Expression.Record
           [ ("method", Expression.String $ toS $ req ^. reqMethod)
-          , ("headers"
-            , Expression.List
-              [ Expression.tuple (Expression.String name) (Expression.App (vacuous $ arg ^. argType . _1) (pure $ headerArgName i))
-              | (i, header) <- zip [0..] $ req ^. reqHeaders
-              , let
-                  arg =
-                    header ^. headerArg
-
-                  name =
-                    unPathSegment (arg ^. argName)
-              ]
-            )
-          , ( "url"
-            , Expression.apps
-                "String.join"
-                [ Expression.String "/"
-                , Expression.List $ elmPathSegment <$> numberedPathSegments
-                ]
-            )
+          , ("headers", elmHeaders)
+          , ( "url", elmUrl)
           , ("body", "TODO.TODO")
           , ("expect", "TODO.TODO")
           , ("timeout", "Maybe.Nothing")
           , ("tracker", "Maybe.Nothing")
           ]
         )
+
+    elmUrl =
+      case numberedPathSegments of
+        [] ->
+          Expression.List []
+
+        [pathSegment] ->
+          elmPathSegment pathSegment
+
+        _
+          | Just staticPathSegments <- traverse staticPathSegment numberedPathSegments ->
+            Expression.String $ Text.intercalate "/" staticPathSegments
+
+        _ ->
+          Expression.apps
+            "String.join"
+            [ Expression.String "/"
+            , Expression.List $ elmPathSegment <$> numberedPathSegments
+            ]
+
+
+    elmHeaders =
+      let
+        headerDecoder i header =
+          Expression.apps
+            "Http.header"
+            [ Expression.String $ unPathSegment $ header ^. headerArg . argName
+            , Expression.App
+              (vacuous $ _encoder $ header ^. headerArg . argType)
+              (pure $ headerArgName i)
+            ]
+
+        optionalHeaderDecoder i header =
+          Expression.apps
+            "Maybe.map"
+            [ Expression.App
+              "Http.header"
+              (Expression.String $ unPathSegment $ header ^. headerArg . argName)
+            , Expression.App
+              (vacuous $ _encoder $ header ^. headerArg . argType)
+              (pure $ headerArgName i)
+            ]
+      in
+      case req ^. reqHeaders of
+        [] ->
+          Expression.List []
+
+        _
+          | any _optional (map (view $ headerArg . argType) $ req ^. reqHeaders) ->
+          Expression.apps "List.mapMaybe"
+          [ "Basics.identity"
+          , Expression.List
+              [ if _optional (header ^. headerArg . argType) then
+                  optionalHeaderDecoder i header
+                else
+                  Expression.App "Maybe.Just" $ headerDecoder i header
+              | (i, header) <- zip [0..] $ req ^. reqHeaders
+              ]
+          ]
+
+        _ ->
+          Expression.List $
+            [ headerDecoder i header
+            | (i, header) <- zip [0..] $ req ^. reqHeaders
+            ]
+
+    staticPathSegment pathSegment =
+      case pathSegment of
+        Static (PathSegment s) ->
+          Just s
+
+        Cap _ ->
+          Nothing
 
     elmPathSegment pathSegment =
       case pathSegment of
@@ -214,7 +291,7 @@ elmRequest moduleName req =
 
         Cap arg ->
           Expression.App
-            (vacuous $ arg ^. argType . _2 . _1)
+            (vacuous $ _encoder $ arg ^. argType . _2)
             (pure $ capturedArgName $ arg ^. argType . _1)
 
     headerArgName :: Int -> Text
@@ -227,15 +304,18 @@ elmRequest moduleName req =
 
 type TestApi
     = "test" :> Header "header" Text :> QueryFlag "flag" :> Get '[JSON] Int
+ :<|> "test" :> Header' '[Required, Strict] "requiredHeader" Text :> QueryFlag "flag" :> Get '[JSON] Int
+ :<|> "twoheaders" :> Header "optionalHeader" Text :> Header' '[Required, Strict] "requiredHeader" Text :> QueryFlag "flag" :> Get '[JSON] Int
  :<|> "test" :> QueryParam "param" Int :> ReqBody '[JSON] [String] :> Post '[JSON] NoContent
  :<|> "test" :> QueryParams "params" Int :> ReqBody '[JSON] String :> Put '[JSON] NoContent
  :<|> "test" :> Capture "id" Int :> Delete '[JSON] NoContent
  :<|> "test" :> CaptureAll "ids" Int :> Get '[JSON] [Int]
+ :<|> "static" :> "url" :> Get '[JSON] [Int]
  :<|> "test" :> EmptyAPI
 
-testApi :: [Req (Expression v, Type v') (Expression v, Type v')]
+testApi :: [Req ElmEncoder ElmDecoder]
 testApi =
-  listFromAPI (Proxy :: Proxy Elm) (Proxy :: Proxy (Expression v, Type v')) (Proxy :: Proxy (Expression v, Type v')) (Proxy :: Proxy TestApi)
+  listFromAPI (Proxy :: Proxy Elm) (Proxy :: Proxy ElmEncoder) (Proxy :: Proxy ElmDecoder) (Proxy :: Proxy TestApi)
 
 apiTest =
   Pretty.modules $ elmRequest ["MyModule"] <$> testApi
