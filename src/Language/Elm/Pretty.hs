@@ -9,6 +9,7 @@ import qualified Bound
 import qualified Bound.Var as Bound
 import Data.HashMap.Lazy (HashMap)
 import qualified Data.HashMap.Lazy as HashMap
+import Data.HashSet (HashSet)
 import qualified Data.HashSet as HashSet
 import Data.String
 import Data.Text.Prettyprint.Doc
@@ -305,6 +306,7 @@ module_ mname defs =
     imports =
       sort $
       HashSet.toList $
+      flip HashSet.difference defaultImports $
       HashSet.filter (/= mname) $
       HashSet.map (\(Name.Qualified m _) -> m) $
       HashSet.filter (isNothing . defaultImport) $
@@ -314,6 +316,21 @@ module_ mname defs =
   mconcat ["import" <+> moduleName import_ <> line | import_ <- imports] <> line <> line <>
   mconcat (intersperse (line <> line <> line) [definition env def | def <- defs])
 
+defaultImports :: HashSet Name.Module
+defaultImports =
+  HashSet.fromList
+    [ ["Basics"]
+    , ["List"]
+    , ["Maybe"]
+    , ["Result"]
+    , ["String"]
+    , ["Char"]
+    , ["Tuple"]
+    , ["Debug"]
+    , ["Platform"]
+    , ["Cmd"]
+    , ["Sub"]
+    ]
 
 -------------------------------------------------------------------------------
 -- Definitions
