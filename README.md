@@ -12,7 +12,7 @@ precise types on the Elm side.
 - [x] Generate Elm modules
 - [ ] Servant client library generation
 - [ ] Test that encoding and decoding round-trip with different Aeson settings
-- [ ] Module organisation, ergonomics
+- [ ] Module and package organisation, ergonomics
 
 ## Related projects
 
