@@ -163,7 +163,7 @@ elmRequest urlBase moduleName req =
           maybe "Basics.()" _decodedType (req ^. reqReturnType)
       in
       Type.App
-        "Platform.Cmd.Cmd"
+        "Cmd.Cmd"
         (Type.apps
           "Result.Result"
           [Type.tuple "Http.Error" (Type.App "Maybe.Maybe" $ Type.tuple "Http.Metadata" "String.String"), type_]

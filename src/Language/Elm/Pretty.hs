@@ -125,7 +125,7 @@ defaultImport qname =
     Name.Qualified ["Basics"] name ->
       Just $ Name.Local name
 
-    "Platform.Cmd.Cmd" ->
+    "Cmd.Cmd" ->
       Just "Cmd"
 
     "List.List" ->
