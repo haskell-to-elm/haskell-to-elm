@@ -118,7 +118,7 @@ elmRequest moduleName req =
   Definition.Constant
     (Name.Qualified moduleName elmFunctionName)
     elmType
-    (panic "expression not closed" <$> lambdaArgs argNames elmBody)
+    (panic "expression not closed" <$> lambdaArgs argNames elmLambdaBody)
   where
     elmFunctionName :: Text
     elmFunctionName =
@@ -148,6 +148,9 @@ elmRequest moduleName req =
             ]
           , [ _encodedType $ arg ^. argType . _2
             | Cap arg <- numberedPathSegments
+            ]
+          , [ _encodedType body
+            | Just body <- [req ^. reqBody]
             ]
           ]
         )
@@ -185,6 +188,9 @@ elmRequest moduleName req =
       , [ capturedArgName $ arg ^. argType . _1
         | Cap arg <- numberedPathSegments
         ]
+      , [ bodyArgName
+        | Just body <- [req ^. reqBody]
+        ]
       ]
 
     lambdaArgs :: [Text] -> Expression Text -> Expression Text
@@ -196,15 +202,15 @@ elmRequest moduleName req =
         arg:args' ->
           Expression.Lam $ Bound.abstract1 arg $ lambdaArgs args' rhs
 
-    elmBody :: Expression Text
-    elmBody =
+    elmLambdaBody :: Expression Text
+    elmLambdaBody =
       Expression.App
         "Http.request"
         (Expression.Record
           [ ("method", Expression.String $ toS $ req ^. reqMethod)
           , ("headers", elmHeaders)
           , ( "url", elmUrl)
-          , ("body", "TODO.TODO")
+          , ("body", elmBody)
           , ("expect", "TODO.TODO")
           , ("timeout", "Maybe.Nothing")
           , ("tracker", "Maybe.Nothing")
@@ -276,6 +282,16 @@ elmRequest moduleName req =
             | (i, header) <- zip [0..] $ req ^. reqHeaders
             ]
 
+    elmBody =
+      case req ^. reqBody of
+        Nothing ->
+          "Http.emptyBody"
+
+        Just body ->
+          Expression.App
+            "Http.jsonBody"
+            (Expression.App (vacuous $ _encoder body) $ pure bodyArgName)
+
     staticPathSegment pathSegment =
       case pathSegment of
         Static (PathSegment s) ->
@@ -293,6 +309,10 @@ elmRequest moduleName req =
           Expression.App
             (vacuous $ _encoder $ arg ^. argType . _2)
             (pure $ capturedArgName $ arg ^. argType . _1)
+
+    bodyArgName :: Text
+    bodyArgName =
+      "body"
 
     headerArgName :: Int -> Text
     headerArgName i =
