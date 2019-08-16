@@ -15,11 +15,10 @@
 {-# LANGUAGE UndecidableInstances #-}
 module ServantToElm where
 
-import Prelude (String)
 import Protolude hiding (Type, moduleName)
 
 import qualified Bound
-import Control.Lens hiding (Strict)
+import Control.Lens hiding (Strict, List)
 import qualified Data.Aeson as Aeson
 import qualified Data.Text as Text
 import qualified Language.Elm.Pretty as Pretty
@@ -67,6 +66,7 @@ instance (SBoolI (FoldRequired mods), HasElmEncoder (RequiredArgument mods Text)
     case sbool @(FoldRequired mods) of
       STrue ->
         makeEncoder @(RequiredArgument mods Text) @b
+
       SFalse ->
         makeOptionalEncoder @(RequiredArgument mods Text) @b
 
@@ -150,6 +150,17 @@ elmRequest urlBase moduleName req =
           , [ _encodedType $ arg ^. argType . _2
             | Cap arg <- numberedPathSegments
             ]
+          , [ case queryArg ^. queryArgType of
+                Normal ->
+                  vacuous $ _encodedType $ queryArg ^. queryArgName . argType
+
+                Flag ->
+                  vacuous $ _encodedType $ queryArg ^. queryArgName . argType
+
+                List ->
+                  vacuous $ Type.App "List.List" $ _encodedType $ queryArg ^. queryArgName . argType
+            | queryArg <- req ^. reqUrl . queryStr
+            ]
           , [ _encodedType body
             | Just body <- [req ^. reqBody]
             ]
@@ -201,6 +212,9 @@ elmRequest urlBase moduleName req =
         ]
       , [ capturedArgName $ arg ^. argType . _1
         | Cap arg <- numberedPathSegments
+        ]
+      , [ paramArgName i
+        | (i, _) <- zip [0..] $ req ^. reqUrl . queryStr
         ]
       , [ bodyArgName
         | Just body <- [req ^. reqBody]
@@ -368,16 +382,20 @@ elmRequest urlBase moduleName req =
     capturedArgName i =
       "capture" <> show i
 
+    paramArgName :: Int -> Text
+    paramArgName i =
+      "param" <> show i
+
 type TestApi
-    = "test" :> Header "header" Text :> QueryFlag "flag" :> Get '[JSON] Int
- :<|> "test" :> Header' '[Required, Strict] "requiredHeader" Text :> QueryFlag "flag" :> Get '[JSON] Int
+    = "header" :> Header "header" Text :> QueryFlag "flag" :> Get '[JSON] Int
+ :<|> "strictheader" :> Header' '[Required, Strict] "requiredHeader" Text :> QueryFlag "flag" :> Get '[JSON] Int
  :<|> "twoheaders" :> Header "optionalHeader" Text :> Header' '[Required, Strict] "requiredHeader" Text :> QueryFlag "flag" :> Get '[JSON] Int
- :<|> "test" :> QueryParam "param" Int :> ReqBody '[JSON] [String] :> Post '[JSON] NoContent
- :<|> "test" :> QueryParams "params" Int :> ReqBody '[JSON] String :> Put '[JSON] NoContent
- :<|> "test" :> Capture "id" Int :> Delete '[JSON] NoContent
- :<|> "test" :> CaptureAll "ids" Int :> Get '[JSON] [Int]
+ :<|> "paramandbody" :> QueryParam "param" Int :> ReqBody '[JSON] [Text] :> Post '[JSON] NoContent
+ :<|> "requiredparamandbody" :> QueryParam' '[Required, Strict] "param" Int :> ReqBody '[JSON] [Text] :> Post '[JSON] NoContent
+ :<|> "paramsandbody" :> QueryParams "params" Int :> ReqBody '[JSON] Text :> Put '[JSON] NoContent
+ :<|> "capture" :> Capture "id" Int :> Delete '[JSON] NoContent
+ :<|> "captures" :> CaptureAll "ids" Int :> Get '[JSON] [Int]
  :<|> "static" :> "url" :> Get '[JSON] [Int]
- :<|> "test" :> EmptyAPI
 
 testApi :: [Req ElmEncoder ElmDecoder]
 testApi =
@@ -385,3 +403,5 @@ testApi =
 
 apiTest =
   Pretty.modules $ elmRequest "Config.urlBase" ["My", "Module"] <$> testApi
+
+-- TODO: Empty responses, query params
