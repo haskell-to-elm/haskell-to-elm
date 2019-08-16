@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Language.Elm.Name where
 
@@ -25,6 +26,9 @@ instance IsString Qualified where
     case unsnoc $ Text.splitOn "." $ fromString s of
       Nothing ->
         panic "Empty name"
+
+      Just ([], x) ->
+        panic $ "Unqualified name " <> show x
 
       Just (xs, x) ->
         Qualified xs x
