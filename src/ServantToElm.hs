@@ -162,7 +162,20 @@ elmRequest urlBase moduleName req =
         type_ =
           maybe "Basics.()" _decodedType (req ^. reqReturnType)
       in
-      Type.App "Platform.Cmd.Cmd" (Type.apps "Result.Result" ["Http.Error", type_])
+      Type.App
+        "Platform.Cmd.Cmd"
+        (Type.apps
+          "Result.Result"
+          [Type.tuple "Http.Error" (Type.App "Maybe.Maybe" $ Type.tuple "Http.Metadata" "String.String"), type_]
+        )
+
+    elmReturnDecoder =
+      case req ^. reqReturnType of
+        Nothing ->
+          panic "elmRequest: No return type" -- TODO?
+
+        Just ret ->
+          vacuous $ _decoder ret
 
     numberedPathSegments =
       go 0 $ req ^. reqUrl . path
@@ -212,7 +225,7 @@ elmRequest urlBase moduleName req =
           , ("headers", elmHeaders)
           , ("url", elmUrl)
           , ("body", elmBody)
-          , ("expect", "TODO.TODO")
+          , ("expect", elmExpect)
           , ("timeout", "Maybe.Nothing")
           , ("tracker", "Maybe.Nothing")
           ]
@@ -280,6 +293,50 @@ elmRequest urlBase moduleName req =
           Expression.App
             "Http.jsonBody"
             (Expression.App (vacuous $ _encoder body) $ pure bodyArgName)
+
+    elmExpect =
+      Expression.apps
+        "Http.expectStringResponse"
+        [ "Basics.identity"
+        , Expression.Lam $ Bound.toScope $
+            Expression.Case (pure $ Bound.B ())
+            [ ( Pattern.Con "Http.BadUrl_" [Pattern.Var 0]
+              , Bound.toScope $
+                Expression.App "Result.Err" $
+                Expression.tuple (Expression.App "Http.BadUrl" $ pure (Bound.B 0)) "Maybe.Nothing"
+              )
+            , ( Pattern.Con "Http.Timeout_" []
+              , Bound.toScope $
+                Expression.App "Result.Err" $
+                Expression.tuple "Http.Timeout" "Maybe.Nothing"
+              )
+            , ( Pattern.Con "Http.NetworkError_" []
+              , Bound.toScope $
+                Expression.App "Result.Err" $
+                Expression.tuple "Http.NetworkError" "Maybe.Nothing"
+              )
+            , ( Pattern.Con "Http.BadStatus" [Pattern.Var 0, Pattern.Var 1]
+              , Bound.toScope $
+                Expression.App "Result.Err" $
+                Expression.tuple
+                  (Expression.App "Http.BadStatus" (Expression.App (Expression.Proj "statusCode") $ pure $ Bound.B 0))
+                  (Expression.App "Maybe.Just" $ Expression.tuple (pure $ Bound.B 0) (pure $ Bound.B 1))
+              )
+            , ( Pattern.Con "Http.GoodStatus" [Pattern.Var 0, Pattern.Var 1]
+              , Bound.toScope $
+                Expression.apps "Result.mapError"
+                  [ Expression.Lam $ Bound.toScope $
+                    Expression.tuple
+                      (Expression.App "Http.BadBody" $
+                        Expression.App "Json.Decode.errorToString" $
+                        pure $ Bound.B ()
+                      )
+                      (Expression.App "Maybe.Just" $ Expression.tuple (pure $ Bound.F $ Bound.B 0) (pure $ Bound.F $ Bound.B 1))
+                  , Expression.apps "Json.Decode.decodeString" [elmReturnDecoder, pure $ Bound.B 1]
+                  ]
+              )
+            ]
+        ]
 
     staticPathSegment pathSegment =
       case pathSegment of

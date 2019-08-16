@@ -1,6 +1,7 @@
-{-# language DeriveFunctor #-}
 {-# language DeriveFoldable #-}
+{-# language DeriveFunctor #-}
 {-# language DeriveTraversable #-}
+{-# language OverloadedStrings #-}
 module Language.Elm.Type where
 
 import Protolude hiding (Type)
@@ -48,6 +49,9 @@ appsView = go mempty
 funs :: [Type v] -> Type v -> Type v
 funs args ret =
   foldr Fun ret args
+
+tuple :: Type v -> Type v -> Type v
+tuple t1 t2 = apps "Basics.," [t1, t2]
 
 foldMapGlobals
   :: Monoid m
