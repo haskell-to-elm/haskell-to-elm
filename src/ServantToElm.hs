@@ -111,10 +111,11 @@ instance HasElmDecoder Aeson.Value NoContent where
       )
 
 elmRequest
-  :: Name.Module
+  :: Expression Void
+  -> Name.Module
   -> Req ElmEncoder ElmDecoder
   -> Definition
-elmRequest moduleName req =
+elmRequest urlBase moduleName req =
   Definition.Constant
     (Name.Qualified moduleName elmFunctionName)
     elmType
@@ -209,7 +210,7 @@ elmRequest moduleName req =
         (Expression.Record
           [ ("method", Expression.String $ toS $ req ^. reqMethod)
           , ("headers", elmHeaders)
-          , ( "url", elmUrl)
+          , ("url", elmUrl)
           , ("body", elmBody)
           , ("expect", "TODO.TODO")
           , ("timeout", "Maybe.Nothing")
@@ -218,23 +219,11 @@ elmRequest moduleName req =
         )
 
     elmUrl =
-      case numberedPathSegments of
-        [] ->
-          Expression.List []
-
-        [pathSegment] ->
-          elmPathSegment pathSegment
-
-        _
-          | Just staticPathSegments <- traverse staticPathSegment numberedPathSegments ->
-            Expression.String $ Text.intercalate "/" staticPathSegments
-
-        _ ->
-          Expression.apps
-            "String.join"
-            [ Expression.String "/"
-            , Expression.List $ elmPathSegment <$> numberedPathSegments
-            ]
+      Expression.apps
+        "String.join"
+        [ Expression.String "/"
+        , Expression.List $ vacuous urlBase : fmap elmPathSegment numberedPathSegments
+        ]
 
 
     elmHeaders =
@@ -338,4 +327,4 @@ testApi =
   listFromAPI (Proxy :: Proxy Elm) (Proxy :: Proxy ElmEncoder) (Proxy :: Proxy ElmDecoder) (Proxy :: Proxy TestApi)
 
 apiTest =
-  Pretty.modules $ elmRequest ["MyModule"] <$> testApi
+  Pretty.modules $ elmRequest "Config.urlBase" ["My", "Module"] <$> testApi
