@@ -445,6 +445,14 @@ expression env prec expr =
           ]
         )
 
+    Expression.If expr' true false ->
+      parensWhen (prec > ifPrec) $
+        "if" <+> expression env 0 expr' <+> "then" <> line <>
+          indent 4 (expression env 0 true) <> line <>
+        line <>
+        "else" <> line <>
+          indent 4 (expression env 0 false)
+
     Expression.List exprs ->
       list $ expression env 0 <$> exprs
 
@@ -533,6 +541,9 @@ pattern env prec pat =
       parensWhen (prec > appPrec) $
         qualified env con <+> hsep (pattern env (appPrec + 1) <$> pats)
 
+    Pattern.List pats ->
+      list $ pattern env 0 <$> pats
+
     Pattern.String s ->
       "\"" <> pretty s <> "\""
 
@@ -620,10 +631,11 @@ parensWhen b =
   else
     identity
 
-appPrec, letPrec, lamPrec, casePrec, funPrec, projPrec :: Int
+appPrec, letPrec, lamPrec, casePrec, ifPrec, funPrec, projPrec :: Int
 appPrec = 10
 letPrec = 0
 lamPrec = 0
 casePrec = 0
+ifPrec = 0
 funPrec = 0
 projPrec = 11

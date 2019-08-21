@@ -118,7 +118,7 @@ elmRequest
 elmRequest urlBase moduleName req =
   Definition.Constant
     (Name.Qualified moduleName elmFunctionName)
-    elmType
+    elmTypeSig
     (panic "expression not closed" <$> lambdaArgs argNames elmLambdaBody)
   where
     elmFunctionName :: Text
@@ -127,8 +127,8 @@ elmRequest urlBase moduleName req =
         FunctionName [] ->
           panic "empty function name"
 
-        FunctionName (part:parts) ->
-          mconcat (part : map capitalise parts)
+        FunctionName (part:parts') ->
+          mconcat (part : map capitalise parts')
 
       where
         capitalise :: Text -> Text
@@ -140,8 +140,8 @@ elmRequest urlBase moduleName req =
             Nothing ->
               ""
 
-    elmType :: Type Void
-    elmType =
+    elmTypeSig :: Type Void
+    elmTypeSig =
       Type.funs
         (concat
           [ [ _encodedType $ header ^. headerArg . argType
@@ -202,9 +202,6 @@ elmRequest urlBase moduleName req =
             Segment (Cap arg):segments' ->
               Cap ((,) i <$> arg) : go (i + 1) segments'
 
-    capturedArgs =
-      [arg | Cap arg <- numberedPathSegments]
-
     argNames =
       concat
       [ [ headerArgName i
@@ -245,12 +242,72 @@ elmRequest urlBase moduleName req =
           ]
         )
 
+    elmParams =
+      [ case queryArg ^. queryArgType of
+        Normal ->
+          if _optional $ queryArg ^. queryArgName . argType then
+            Expression.apps
+              "Maybe.unwrap"
+              [ Expression.List []
+              , "List.singleton" Expression.<< Expression.App "Basics.++" (Expression.String $ name <> "=")
+              , encode $ pure $ paramArgName i
+              ]
+
+          else
+            Expression.List
+              [Expression.String (name <> "=") Expression.++ encode (pure $ paramArgName i)]
+
+        Flag ->
+          Expression.If
+            (pure $ paramArgName i)
+            (Expression.List [Expression.String name])
+            (Expression.List [])
+
+        List ->
+          Expression.apps
+            "List.map"
+            [ Expression.App "Basics.++" (Expression.String (name <> "[]=")) Expression.<< encoder
+            , pure $ paramArgName i
+            ]
+      | (i, queryArg) <- zip [0..] $ req ^. reqUrl . queryStr
+      , let
+          name =
+            unPathSegment $ queryArg ^. queryArgName . argName
+
+          encoder =
+            vacuous $ _encoder $ queryArg ^. queryArgName . argType
+
+          encode =
+            Expression.App encoder
+      ]
+
     elmUrl =
-      Expression.apps
-        "String.join"
-        [ Expression.String "/"
-        , Expression.List $ vacuous urlBase : fmap elmPathSegment numberedPathSegments
-        ]
+      case elmParams of
+        [] ->
+          withoutParams
+
+        [elmParams'] ->
+          withParams elmParams'
+
+        _ ->
+          withParams (Expression.App "List.concat" $ Expression.List elmParams)
+
+      where
+        withoutParams =
+          Expression.apps
+            "String.join"
+            [ Expression.String "/"
+            , Expression.List $ vacuous urlBase : fmap elmPathSegment numberedPathSegments
+            ]
+
+        withParams params =
+          withoutParams Expression.++
+            Expression.Case params
+              [ (Pattern.List [], Bound.toScope $ Expression.String "")
+              , ( Pattern.Var 0
+                , Bound.toScope $ Expression.String "?" Expression.++ Expression.apps "String.join" [Expression.String "&", pure $ Bound.B 0]
+                )
+              ]
 
 
     elmHeaders =
@@ -404,4 +461,4 @@ testApi =
 apiTest =
   Pretty.modules $ elmRequest "Config.urlBase" ["My", "Module"] <$> testApi
 
--- TODO: Empty responses, query params
+-- TODO: Empty responses

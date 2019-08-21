@@ -13,6 +13,7 @@ data Pattern v
   = Var v
   | Wildcard
   | Con Name.Qualified [Pattern v]
+  | List [Pattern v]
   | String !Text
   | Int !Integer
   | Float !Double
@@ -33,6 +34,9 @@ foldMapGlobals f pat =
 
     Con c pats ->
       f c <> foldMap (foldMapGlobals f) pats
+
+    List pats ->
+      foldMap (foldMapGlobals f) pats
 
     String _ ->
       mempty

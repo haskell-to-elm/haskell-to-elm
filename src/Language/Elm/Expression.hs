@@ -30,6 +30,7 @@ data Expression v
   | Record [(Name.Field, Expression v)]
   | Proj Name.Field
   | Case (Expression v) [(Pattern Int, Scope Int Expression v)]
+  | If (Expression v) (Expression v) (Expression v)
   | List [Expression v]
   | String !Text
   | Int !Integer
@@ -49,6 +50,7 @@ instance Monad Expression where
   Record fs >>= f = Record [(fname, e >>= f) | (fname, e) <- fs]
   Proj f >>= _ = Proj f
   Case e brs >>= f = Case (e >>= f) [(pat, s >>>= f) | (pat, s) <- brs]
+  If e e1 e2 >>= f = If (e >>= f) (e1 >>= f) (e2 >>= f)
   List es >>= f = List ((>>= f) <$> es)
   String s >>= _ = String s
   Int n >>= _ = Int n
@@ -91,6 +93,9 @@ appsView = go mempty
 (>>) :: Expression v -> Expression v -> Expression v
 (>>) e1 e2 = apps "Basics.>>" [e1, e2]
 
+(++) :: Expression v -> Expression v -> Expression v
+(++) e1 e2 = apps "Basics.++" [e1, e2]
+
 tuple :: Expression v -> Expression v -> Expression v
 tuple e1 e2 = apps "Basics.," [e1, e2]
 
@@ -127,6 +132,9 @@ foldMapGlobals f expr =
       foldMap
         (bifoldMap (Pattern.foldMapGlobals f) (foldMapGlobals f . Bound.fromScope))
         branches
+
+    If e e1 e2 ->
+      foldMapGlobals f e <> foldMapGlobals f e1 <> foldMapGlobals f e2
 
     List es ->
       foldMap (foldMapGlobals f) es
