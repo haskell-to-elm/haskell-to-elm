@@ -196,10 +196,10 @@ elmRequest urlBase moduleName req =
             [] ->
               []
 
-            Segment (Static p):segments' ->
+            Static p:segments' ->
               Static p : go i segments'
 
-            Segment (Cap arg):segments' ->
+            Cap arg:segments' ->
               Cap ((,) i <$> arg) : go (i + 1) segments'
 
     argNames =
@@ -214,7 +214,7 @@ elmRequest urlBase moduleName req =
         | (i, _) <- zip [0..] $ req ^. reqUrl . queryStr
         ]
       , [ bodyArgName
-        | Just body <- [req ^. reqBody]
+        | Just _ <- [req ^. reqBody]
         ]
       ]
 
@@ -408,14 +408,6 @@ elmRequest urlBase moduleName req =
               )
             ]
         ]
-
-    staticPathSegment pathSegment =
-      case pathSegment of
-        Static (PathSegment s) ->
-          Just s
-
-        Cap _ ->
-          Nothing
 
     elmPathSegment pathSegment =
       case pathSegment of
