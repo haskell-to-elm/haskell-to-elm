@@ -148,7 +148,7 @@ elmRequest urlBase moduleName req =
             | header <- req ^. reqHeaders
             ]
           , [ _encodedType $ arg ^. argType . _2
-            | Cap arg <- numberedPathSegments
+            | Capture arg <- numberedPathSegments
             ]
           , [ case queryArg ^. queryArgType of
                 Normal ->
@@ -199,8 +199,8 @@ elmRequest urlBase moduleName req =
             Static p:segments' ->
               Static p : go i segments'
 
-            Cap arg:segments' ->
-              Cap ((,) i <$> arg) : go (i + 1) segments'
+            Capture arg:segments' ->
+              Capture ((,) i <$> arg) : go (i + 1) segments'
 
     argNames =
       concat
@@ -208,7 +208,7 @@ elmRequest urlBase moduleName req =
         | (i, _) <- zip [0..] $ req ^. reqHeaders
         ]
       , [ capturedArgName $ arg ^. argType . _1
-        | Cap arg <- numberedPathSegments
+        | Capture arg <- numberedPathSegments
         ]
       , [ paramArgName i
         | (i, _) <- zip [0..] $ req ^. reqUrl . queryStr
@@ -414,7 +414,7 @@ elmRequest urlBase moduleName req =
         Static s ->
           Expression.String s
 
-        Cap arg ->
+        Capture arg ->
           Expression.App
             (vacuous $ _encoder $ arg ^. argType . _2)
             (pure $ capturedArgName $ arg ^. argType . _1)
