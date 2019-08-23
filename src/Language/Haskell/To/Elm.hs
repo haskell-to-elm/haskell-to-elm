@@ -128,7 +128,7 @@ deriveElmJSONDecoder options aesonOptions decoderName =
   case datatypeInfo (Proxy @a) of
     ADT _mname _tname (Record _cname fields :* Nil) ->
       decodeRecord fields $
-      Expression.App "Json.Decode.Pipeline.decode" $
+      Expression.App "Json.Decode.succeed" $
       case Type.appsView (elmType @a) of
         (Type.Record fieldTypes, _) ->
           explicitRecordConstructor $ fst <$> fieldTypes
@@ -282,7 +282,7 @@ deriveElmJSONDecoder options aesonOptions decoderName =
         in
         foldl'
           (Expression.|>)
-          (Expression.App "Json.Decode.Pipeline.decode" qualifiedConstr)
+          (Expression.App "Json.Decode.succeed" qualifiedConstr)
           [Expression.App
             "Json.Decode.Pipeline.custom"
             (Expression.apps "Json.Decode.index" [Expression.Int index , field])
@@ -318,7 +318,7 @@ deriveElmJSONDecoder options aesonOptions decoderName =
                   , Bound.toScope $
                     case fmap (Bound.F . Bound.F) <$> fields of
                       [field] ->
-                        Expression.App "Json.Decode.Pipeline.decode" qualifiedConstr Expression.|>
+                        Expression.App "Json.Decode.succeed" qualifiedConstr Expression.|>
                           Expression.apps "Json.Decode.Pipeline.required" [Expression.String (toS contentsName), field]
                       fields' ->
                         Expression.apps
@@ -326,7 +326,7 @@ deriveElmJSONDecoder options aesonOptions decoderName =
                           [ Expression.String (toS contentsName)
                           , foldl'
                             (Expression.|>)
-                            (Expression.App "Json.Decode.Pipeline.decode" qualifiedConstr)
+                            (Expression.App "Json.Decode.succeed" qualifiedConstr)
                             [ Expression.App
                               "Json.Decode.Pipeline.custom"
                               (Expression.apps "Json.Decode.index" [Expression.Int index, field])
