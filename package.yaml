@@ -24,15 +24,13 @@ dependencies:
 - base >= 4.7 && < 5
 - bound
 - deriving-compat
+- elm-syntax
 - generics-sop
+- lens
 - prettyprinter
 - protolude
 - text
 - unordered-containers
-
-- servant
-- servant-foreign
-- lens
 
 ghc-options:
   - -Wall

@@ -17,7 +17,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# OPTIONS_GHC -Wno-partial-type-signatures #-}
-module HaskellToElm where
+module Language.Haskell.To.Elm where
 
 import Protolude hiding (All, Infix, Type)
 
