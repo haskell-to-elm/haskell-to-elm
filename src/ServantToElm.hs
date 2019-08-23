@@ -272,7 +272,7 @@ elmRequest urlBase moduleName req =
       | (i, queryArg) <- zip [0..] $ req ^. reqUrl . queryStr
       , let
           name =
-            unPathSegment $ queryArg ^. queryArgName . argName
+            queryArg ^. queryArgName . argName
 
           encoder =
             vacuous $ _encoder $ queryArg ^. queryArgName . argType
@@ -315,7 +315,7 @@ elmRequest urlBase moduleName req =
         headerDecoder i header =
           Expression.apps
             "Http.header"
-            [ Expression.String $ unPathSegment $ header ^. headerArg . argName
+            [ Expression.String $ header ^. headerArg . argName
             , Expression.App
               (vacuous $ _encoder $ header ^. headerArg . argType)
               (pure $ headerArgName i)
@@ -326,7 +326,7 @@ elmRequest urlBase moduleName req =
             "Maybe.map"
             [ Expression.App
               "Http.header"
-              (Expression.String $ unPathSegment $ header ^. headerArg . argName)
+              (Expression.String $ header ^. headerArg . argName)
             , Expression.App
               (vacuous $ _encoder $ header ^. headerArg . argType)
               (pure $ headerArgName i)
@@ -411,7 +411,7 @@ elmRequest urlBase moduleName req =
 
     elmPathSegment pathSegment =
       case pathSegment of
-        Static (PathSegment s) ->
+        Static s ->
           Expression.String s
 
         Cap arg ->
