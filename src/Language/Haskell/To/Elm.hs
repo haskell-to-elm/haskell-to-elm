@@ -675,6 +675,35 @@ instance HasElmDecoder Aeson.Value a => HasElmDecoder Aeson.Value [a] where
   elmDecoder =
     Expression.App "Json.Decode.list" (elmDecoder @Aeson.Value @a)
 
+instance (HasElmType a, HasElmType b) => HasElmType (a, b) where
+  elmType =
+    Type.apps "Basics.," [elmType @a, elmType @b]
+
+instance (HasElmEncoder Aeson.Value a, HasElmEncoder Aeson.Value b) => HasElmEncoder Aeson.Value (a, b) where
+  elmEncoder =
+    Expression.Lam $ Bound.toScope $
+      Expression.Case (pure $ Bound.B ())
+        [ ( Pattern.tuple (Pattern.Var 0) (Pattern.Var 1)
+          , Bound.toScope $
+            Expression.apps "Json.Encode.list"
+            [ "Basics.identity"
+            , Expression.List
+                [ Expression.App (elmEncoder @Aeson.Value @a) $ pure $ Bound.B 0
+                , Expression.App (elmEncoder @Aeson.Value @b) $ pure $ Bound.B 1
+                ]
+            ]
+          )
+        ]
+
+instance (HasElmDecoder Aeson.Value a, HasElmDecoder Aeson.Value b) => HasElmDecoder Aeson.Value (a, b) where
+  elmDecoder =
+    Expression.apps
+      "Json.Decode.map2"
+      [ "Tuple.pair"
+      , elmDecoder @Aeson.Value @a
+      , elmDecoder @Aeson.Value @b
+      ]
+
 -------------
 
 data Test = A Int Double | B Text
