@@ -147,8 +147,8 @@ elmRequest urlBase moduleName req =
           [ [ _encodedType $ header ^. argType
             | header <- req ^. reqHeaders
             ]
-          , [ _encodedType $ arg ^. argType . _2
-            | Capture arg <- numberedPathSegments
+          , [ _encodedType arg
+            | Capture _ (_, arg) <- numberedPathSegments
             ]
           , [ case queryArg ^. queryArgType of
                 Normal ->
@@ -159,7 +159,7 @@ elmRequest urlBase moduleName req =
 
                 List ->
                   vacuous $ Type.App "List.List" $ _encodedType $ queryArg ^. queryArgName . argType
-            | queryArg <- req ^. reqUrl . queryStr
+            | queryArg <- req ^. reqUrl . queryString
             ]
           , [ _encodedType body
             | Just body <- [req ^. reqBody]
@@ -199,19 +199,19 @@ elmRequest urlBase moduleName req =
             Static p:segments' ->
               Static p : go i segments'
 
-            Capture arg:segments' ->
-              Capture ((,) i <$> arg) : go (i + 1) segments'
+            Capture str arg:segments' ->
+              Capture str (i, arg) : go (i + 1) segments'
 
     argNames =
       concat
       [ [ headerArgName i
         | (i, _) <- zip [0..] $ req ^. reqHeaders
         ]
-      , [ capturedArgName $ arg ^. argType . _1
-        | Capture arg <- numberedPathSegments
+      , [ capturedArgName i
+        | Capture _ (i, _) <- numberedPathSegments
         ]
       , [ paramArgName i
-        | (i, _) <- zip [0..] $ req ^. reqUrl . queryStr
+        | (i, _) <- zip [0..] $ req ^. reqUrl . queryString
         ]
       , [ bodyArgName
         | Just _ <- [req ^. reqBody]
@@ -269,7 +269,7 @@ elmRequest urlBase moduleName req =
             [ Expression.App "Basics.++" (Expression.String (name <> "[]=")) Expression.<< encoder
             , pure $ paramArgName i
             ]
-      | (i, queryArg) <- zip [0..] $ req ^. reqUrl . queryStr
+      | (i, queryArg) <- zip [0..] $ req ^. reqUrl . queryString
       , let
           name =
             queryArg ^. queryArgName . argName
@@ -414,10 +414,10 @@ elmRequest urlBase moduleName req =
         Static s ->
           Expression.String s
 
-        Capture arg ->
+        Capture _ (i, arg) ->
           Expression.App
-            (vacuous $ _encoder $ arg ^. argType . _2)
-            (pure $ capturedArgName $ arg ^. argType . _1)
+            (vacuous $ _encoder arg)
+            (pure $ capturedArgName i)
 
     bodyArgName :: Text
     bodyArgName =
