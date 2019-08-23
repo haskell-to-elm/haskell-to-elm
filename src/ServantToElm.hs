@@ -144,7 +144,7 @@ elmRequest urlBase moduleName req =
     elmTypeSig =
       Type.funs
         (concat
-          [ [ _encodedType $ header ^. headerArg . argType
+          [ [ _encodedType $ header ^. argType
             | header <- req ^. reqHeaders
             ]
           , [ _encodedType $ arg ^. argType . _2
@@ -315,9 +315,9 @@ elmRequest urlBase moduleName req =
         headerDecoder i header =
           Expression.apps
             "Http.header"
-            [ Expression.String $ header ^. headerArg . argName
+            [ Expression.String $ header ^. argName
             , Expression.App
-              (vacuous $ _encoder $ header ^. headerArg . argType)
+              (vacuous $ _encoder $ header ^. argType)
               (pure $ headerArgName i)
             ]
 
@@ -326,9 +326,9 @@ elmRequest urlBase moduleName req =
             "Maybe.map"
             [ Expression.App
               "Http.header"
-              (Expression.String $ header ^. headerArg . argName)
+              (Expression.String $ header ^. argName)
             , Expression.App
-              (vacuous $ _encoder $ header ^. headerArg . argType)
+              (vacuous $ _encoder $ header ^. argType)
               (pure $ headerArgName i)
             ]
       in
@@ -337,11 +337,11 @@ elmRequest urlBase moduleName req =
           Expression.List []
 
         _
-          | any _optional (map (view $ headerArg . argType) $ req ^. reqHeaders) ->
+          | any _optional (map (view argType) $ req ^. reqHeaders) ->
           Expression.apps "List.mapMaybe"
           [ "Basics.identity"
           , Expression.List
-              [ if _optional (header ^. headerArg . argType) then
+              [ if _optional (header ^. argType) then
                   optionalHeaderDecoder i header
                 else
                   Expression.App "Maybe.Just" $ headerDecoder i header
