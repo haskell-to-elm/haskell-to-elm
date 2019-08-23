@@ -113,7 +113,7 @@ instance HasElmDecoder Aeson.Value Servant.NoContent where
 elmRequest
   :: Expression Void
   -> Name.Module
-  -> Servant.Req ElmEncoder ElmDecoder
+  -> Servant.Request ElmEncoder ElmDecoder
   -> Definition
 elmRequest urlBase moduleName req =
   Definition.Constant
@@ -424,7 +424,7 @@ type TestApi
  :<|> "captures" :> Servant.CaptureAll "ids" Int :> Servant.Get '[Servant.JSON] [Int]
  :<|> "static" :> "url" :> Servant.Get '[Servant.JSON] [Int]
 
-testApi :: [Servant.Req ElmEncoder ElmDecoder]
+testApi :: [Servant.Request ElmEncoder ElmDecoder]
 testApi =
   Servant.listFromAPI (Proxy :: Proxy Elm) (Proxy :: Proxy ElmEncoder) (Proxy :: Proxy ElmDecoder) (Proxy :: Proxy TestApi)
 
