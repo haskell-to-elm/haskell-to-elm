@@ -700,8 +700,8 @@ instance (HasElmDecoder Aeson.Value a, HasElmDecoder Aeson.Value b) => HasElmDec
     Expression.apps
       "Json.Decode.map2"
       [ "Tuple.pair"
-      , elmDecoder @Aeson.Value @a
-      , elmDecoder @Aeson.Value @b
+      , Expression.apps "Json.Decode.index" [Expression.Int 0, elmDecoder @Aeson.Value @a]
+      , Expression.apps "Json.Decode.index" [Expression.Int 1, elmDecoder @Aeson.Value @b]
       ]
 
 -------------
