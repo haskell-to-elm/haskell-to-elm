@@ -84,6 +84,9 @@ deriveElmTypeDefinition options name =
     ADT _mname _tname cs ->
       Definition.Type name (constructors cs)
 
+    Newtype _mname _tname (Record _cname fields) ->
+      Definition.Alias name (Type.Record (recordFields fields))
+
     Newtype _mname _tname c ->
       Definition.Type name (constructors (c :* Nil))
   where
@@ -133,6 +136,16 @@ deriveElmJSONDecoder options aesonOptions decoderName =
 
     ADT _mname _tname cs ->
       decodeConstructors $ constructors cs
+
+    Newtype _mname _tname (Record _cname fields) ->
+      decodeRecord fields $
+      Expression.App "Json.Decode.succeed" $
+      case Type.appsView (elmType @a) of
+        (Type.Record fieldTypes, _) ->
+          explicitRecordConstructor $ fst <$> fieldTypes
+
+        _ ->
+          Expression.Global typeName
 
     Newtype _mname _tname c ->
       decodeConstructors $ constructors (c :* Nil)
@@ -201,7 +214,7 @@ deriveElmJSONDecoder options aesonOptions decoderName =
       | Aeson.unwrapUnaryRecords aesonOptions =
         unwrappedRecordField f
     decodeRecord fs =
-        recordFields fs
+      recordFields fs
 
     recordFields
       :: All (HasElmDecoder Aeson.Value) xs
@@ -372,6 +385,9 @@ deriveElmJSONEncoder options aesonOptions encoderName =
 
       ADT _mname _tname cs ->
         encodeConstructors (constructors cs) (pure $ Bound.B ())
+
+      Newtype _mname _tname (Record _cname fields) ->
+        encodeRecord fields $ pure $ Bound.B ()
 
       Newtype _mname _tname c ->
         encodeConstructors (constructors (c :* Nil)) (pure $ Bound.B ())
