@@ -698,3 +698,10 @@ instance (HasElmDecoder Aeson.Value a, HasElmDecoder Aeson.Value b) => HasElmDec
       , Expression.apps "Json.Decode.index" [Expression.Int 0, elmDecoder @Aeson.Value @a]
       , Expression.apps "Json.Decode.index" [Expression.Int 1, elmDecoder @Aeson.Value @b]
       ]
+
+jsonDefinitions :: forall t. (HasElmDefinition t, HasElmEncoderDefinition Aeson.Value t, HasElmDecoderDefinition Aeson.Value t) => [Definition]
+jsonDefinitions =
+  [ elmDefinition @t
+  , elmEncoderDefinition @Aeson.Value @t
+  , elmDecoderDefinition @Aeson.Value @t
+  ]
