@@ -268,6 +268,25 @@ deriveElmJSONDecoder options aesonOptions decoderName =
     elmField :: String -> Name.Field
     elmField = fromString . fieldLabelModifier options
 
+    decodeConstructor :: String -> Expression v -> [Expression v] -> Expression v
+    decodeConstructor contentsName constr [constrField] =
+      Expression.App "Json.Decode.succeed" constr Expression.|>
+        Expression.apps "Json.Decode.Pipeline.required" [Expression.String (toS contentsName), constrField]
+
+    decodeConstructor contentsName constr constrFields =
+      Expression.apps
+        "Json.Decode.field"
+        [ Expression.String (toS contentsName)
+        , foldl'
+          (Expression.|>)
+          (Expression.App "Json.Decode.succeed" constr)
+          [ Expression.App
+            "Json.Decode.Pipeline.custom"
+            (Expression.apps "Json.Decode.index" [Expression.Int index, field])
+          | (index, field) <- zip [0..] constrFields
+          ]
+        ]
+
     decodeConstructors :: [(String, [Expression v])] -> Expression v
     decodeConstructors [(constr, constrFields)]
       | not $ Aeson.tagSingleConstructors aesonOptions =
@@ -275,14 +294,19 @@ deriveElmJSONDecoder options aesonOptions decoderName =
           qualifiedConstr =
             Expression.Global $ Name.Qualified moduleName_ $ toS constr
         in
-        foldl'
-          (Expression.|>)
-          (Expression.App "Json.Decode.succeed" qualifiedConstr)
-          [Expression.App
-            "Json.Decode.Pipeline.custom"
-            (Expression.apps "Json.Decode.index" [Expression.Int index , field])
-          | (index, field) <- zip [0..] constrFields
-          ]
+        case constrFields of
+          [constrField] ->
+            constrField
+
+          _ ->
+            foldl'
+              (Expression.|>)
+              (Expression.App "Json.Decode.succeed" qualifiedConstr)
+              [Expression.App
+                "Json.Decode.Pipeline.custom"
+                (Expression.apps "Json.Decode.index" [Expression.Int index, field])
+              | (index, field) <- zip [0..] constrFields
+              ]
 
     decodeConstructors constrs
       | Aeson.allNullaryToStringTag aesonOptions && allNullary constrs =
@@ -310,24 +334,7 @@ deriveElmJSONDecoder options aesonOptions decoderName =
             Expression.App "Json.Decode.andThen" (Expression.Lam
               (Bound.toScope $ Expression.Case (pure $ Bound.B ()) $
                 [ ( Pattern.String $ constructorJSONName constr
-                  , Bound.toScope $
-                    case fmap (Bound.F . Bound.F) <$> fields of
-                      [field] ->
-                        Expression.App "Json.Decode.succeed" qualifiedConstr Expression.|>
-                          Expression.apps "Json.Decode.Pipeline.required" [Expression.String (toS contentsName), field]
-                      fields' ->
-                        Expression.apps
-                          "Json.Decode.field"
-                          [ Expression.String (toS contentsName)
-                          , foldl'
-                            (Expression.|>)
-                            (Expression.App "Json.Decode.succeed" qualifiedConstr)
-                            [ Expression.App
-                              "Json.Decode.Pipeline.custom"
-                              (Expression.apps "Json.Decode.index" [Expression.Int index, field])
-                            | (index, field) <- zip [0..] fields'
-                            ]
-                          ]
+                  , Bound.toScope $ decodeConstructor contentsName qualifiedConstr (fmap (Bound.F . Bound.F) <$> fields)
                   )
               | (constr, fields) <- constrs
               , let
@@ -496,23 +503,26 @@ deriveElmJSONEncoder options aesonOptions encoderName =
     elmConstr :: String -> Name.Qualified
     elmConstr = Name.Qualified moduleName_ . fromString
 
+    encodeConstructorFields :: [Expression v] -> Expression (Bound.Var Int v)
+    encodeConstructorFields [constrField] =
+      Expression.App (Bound.F <$> constrField) (pure $ Bound.B 0)
+
+    encodeConstructorFields constrFields =
+      Expression.apps
+        "Json.Encode.list"
+        [ "Basics.identity"
+        , Expression.List
+          [ Expression.App (Bound.F <$> field) (pure $ Bound.B index)
+          | (index, field) <- zip [0..] constrFields
+          ]
+        ]
+
     encodeConstructors :: [(String, [Expression v])] -> Expression v -> Expression v
     encodeConstructors [(constr, constrFields)] expr
       | not $ Aeson.tagSingleConstructors aesonOptions =
-        let
-          indexedConstrFields = zip [0..] constrFields
-        in
         Expression.Case expr
-          [ ( Pattern.Con (elmConstr constr) (Pattern.Var . fst <$> indexedConstrFields)
-            , Bound.toScope $
-              Expression.apps
-                "Json.Encode.list"
-                [ "Basics.identity"
-                , Expression.List
-                  [ Expression.App (Bound.F <$> field) (pure $ Bound.B index)
-                  | (index, field) <- indexedConstrFields
-                  ]
-                ]
+          [ ( Pattern.Con (elmConstr constr) (Pattern.Var . fst <$> zip [0..] constrFields)
+            , Bound.toScope $ encodeConstructorFields constrFields
             )
           ]
 
@@ -530,7 +540,7 @@ deriveElmJSONEncoder options aesonOptions encoderName =
       case Aeson.sumEncoding aesonOptions of
         Aeson.TaggedObject tagName contentsName ->
           Expression.Case expr
-            [ ( Pattern.Con (elmConstr constr) (Pattern.Var . fst <$> indexedConstrFields)
+            [ ( Pattern.Con (elmConstr constr) (Pattern.Var . fst <$> zip [0..] constrFields)
               , Bound.toScope $
                 Expression.App "Json.Encode.object" $
                 Expression.List
@@ -538,19 +548,11 @@ deriveElmJSONEncoder options aesonOptions encoderName =
                     (Expression.String (toS tagName))
                     (Expression.App "Json.Encode.string" $ Expression.String $ constructorJSONName constr)
                   , Expression.tuple
-                    (Expression.String (toS contentsName)) $
-                      Expression.apps "Json.Encode.list"
-                        [ "Basics.identity"
-                        , Expression.List
-                          [ Expression.App (Bound.F <$> field) (pure $ Bound.B index)
-                          | (index, field) <- indexedConstrFields
-                          ]
-                        ]
+                    (Expression.String (toS contentsName))
+                    (encodeConstructorFields constrFields)
                   ]
               )
             | (constr, constrFields) <- constrs
-            , let
-                indexedConstrFields = zip [0..] constrFields
             ]
 
         _ -> panic "Only the DataAeson.TaggedObject sumEncoding is currently supported"
