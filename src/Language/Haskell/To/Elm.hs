@@ -313,7 +313,7 @@ deriveElmJSONDecoder options aesonOptions decoderName =
 
     decodeConstructors constrs
       | Aeson.allNullaryToStringTag aesonOptions && allNullary constrs =
-        "Json.Decode.string" Expression.|> Expression.Lam
+        "Json.Decode.string" Expression.|> Expression.App "Json.Decode.andThen" (Expression.Lam
           (Bound.toScope $ Expression.Case (pure $ Bound.B ()) $
             [ ( Pattern.String $ constructorJSONName constr
               , Bound.toScope $ Expression.App "Json.Decode.succeed" qualifiedConstr
@@ -328,7 +328,7 @@ deriveElmJSONDecoder options aesonOptions decoderName =
               , Bound.toScope $ Expression.App "Json.Decode.fail" $ Expression.String "No matching constructor"
               )
             ]
-          )
+          ))
 
     decodeConstructors constrs =
       case Aeson.sumEncoding aesonOptions of
