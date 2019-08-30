@@ -578,11 +578,11 @@ instance HasElmType Double where
 
 instance HasElmEncoder Aeson.Value Double where
   elmEncoder =
-    "Json.Encode.double"
+    "Json.Encode.float"
 
 instance HasElmDecoder Aeson.Value Double where
   elmDecoder =
-    "Json.Decode.double"
+    "Json.Decode.float"
 
 instance HasElmType Bool where
   elmType =
