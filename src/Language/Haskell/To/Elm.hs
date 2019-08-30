@@ -269,6 +269,9 @@ deriveElmJSONDecoder options aesonOptions decoderName =
     elmField = fromString . fieldLabelModifier options
 
     decodeConstructor :: String -> Expression v -> [Expression v] -> Expression v
+    decodeConstructor _ constr [] =
+      Expression.App "Json.Decode.succeed" constr
+
     decodeConstructor contentsName constr [constrField] =
       Expression.App "Json.Decode.succeed" constr Expression.|>
         Expression.apps "Json.Decode.Pipeline.required" [Expression.String (toS contentsName), constrField]
@@ -543,13 +546,15 @@ deriveElmJSONEncoder options aesonOptions encoderName =
             [ ( Pattern.Con (elmConstr constr) (Pattern.Var . fst <$> zip [0..] constrFields)
               , Bound.toScope $
                 Expression.App "Json.Encode.object" $
-                Expression.List
-                  [ Expression.tuple
+                Expression.List $
+                  Expression.tuple
                     (Expression.String (toS tagName))
                     (Expression.App "Json.Encode.string" $ Expression.String $ constructorJSONName constr)
-                  , Expression.tuple
+                  :
+                  [ Expression.tuple
                     (Expression.String (toS contentsName))
                     (encodeConstructorFields constrFields)
+                  | not $ null constrFields
                   ]
               )
             | (constr, constrFields) <- constrs
