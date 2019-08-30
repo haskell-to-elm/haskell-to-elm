@@ -65,7 +65,7 @@ class HasElmType a => HasElmEncoder value a where
 -------------------------------------------------------------------------------
 -- * Derivers
 
-data Options = Options
+newtype Options = Options
   { fieldLabelModifier :: String -> String
   }
 
@@ -387,7 +387,7 @@ deriveElmJSONEncoder options aesonOptions encoderName =
       -> (String, [Expression v])
     constructor (Constructor cname) =
       (cname, constructorFields $ shape @_ @xs)
-    constructor (Infix _ _ _) =
+    constructor Infix {} =
       panic "Infix constructors are not supported"
     constructor (Record cname fs) =
       (cname, [Expression.Lam $ Bound.toScope $ encodeRecord fs (pure $ Bound.B ())])
@@ -453,7 +453,7 @@ deriveElmJSONEncoder options aesonOptions encoderName =
     recordField (FieldInfo fname) e
       | Aeson.omitNothingFields aesonOptions && isMaybe @x =
         ( []
-        , [ Expression.Case (Expression.App (Expression.Proj $ elmField fname) e) $
+        , [ Expression.Case (Expression.App (Expression.Proj $ elmField fname) e)
             [ ( Pattern.Con "Maybe.Nothing" []
               , Bound.toScope $ Expression.List []
               )
@@ -502,7 +502,7 @@ deriveElmJSONEncoder options aesonOptions encoderName =
         let
           indexedConstrFields = zip [0..] constrFields
         in
-        Expression.Case expr $
+        Expression.Case expr
           [ ( Pattern.Con (elmConstr constr) (Pattern.Var . fst <$> indexedConstrFields)
             , Bound.toScope $
               Expression.App "Json.Encode.list" $
@@ -515,7 +515,7 @@ deriveElmJSONEncoder options aesonOptions encoderName =
 
     encodeConstructors constrs expr
       | Aeson.allNullaryToStringTag aesonOptions && allNullary constrs =
-        Expression.Case expr $
+        Expression.Case expr
           [ ( Pattern.Con (elmConstr constr) []
             , Bound.toScope $
               Expression.App "Json.Encode.string" $ Expression.String $ constructorJSONName constr
@@ -526,7 +526,7 @@ deriveElmJSONEncoder options aesonOptions encoderName =
     encodeConstructors constrs expr =
       case Aeson.sumEncoding aesonOptions of
         Aeson.TaggedObject tagName contentsName ->
-          Expression.Case expr $
+          Expression.Case expr
             [ ( Pattern.Con (elmConstr constr) (Pattern.Var . fst <$> indexedConstrFields)
               , Bound.toScope $
                 Expression.App "Json.Encode.object" $
@@ -537,7 +537,7 @@ deriveElmJSONEncoder options aesonOptions encoderName =
                   , Expression.tuple
                     (Expression.String (toS contentsName)) $
                       Expression.App "Json.Encode.list" $
-                      Expression.List $
+                      Expression.List
                       [ Expression.App (Bound.F <$> field) (pure $ Bound.B index)
                       | (index, field) <- indexedConstrFields
                       ]
