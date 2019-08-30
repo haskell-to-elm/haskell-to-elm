@@ -505,10 +505,13 @@ deriveElmJSONEncoder options aesonOptions encoderName =
         Expression.Case expr
           [ ( Pattern.Con (elmConstr constr) (Pattern.Var . fst <$> indexedConstrFields)
             , Bound.toScope $
-              Expression.App "Json.Encode.list" $
-              Expression.List
-                [ Expression.App (Bound.F <$> field) (pure $ Bound.B index)
-                | (index, field) <- indexedConstrFields
+              Expression.apps
+                "Json.Encode.list"
+                [ "Basics.identity"
+                , Expression.List
+                  [ Expression.App (Bound.F <$> field) (pure $ Bound.B index)
+                  | (index, field) <- indexedConstrFields
+                  ]
                 ]
             )
           ]
@@ -536,11 +539,13 @@ deriveElmJSONEncoder options aesonOptions encoderName =
                     (Expression.App "Json.Encode.string" $ Expression.String $ constructorJSONName constr)
                   , Expression.tuple
                     (Expression.String (toS contentsName)) $
-                      Expression.App "Json.Encode.list" $
-                      Expression.List
-                      [ Expression.App (Bound.F <$> field) (pure $ Bound.B index)
-                      | (index, field) <- indexedConstrFields
-                      ]
+                      Expression.apps "Json.Encode.list"
+                        [ "Basics.identity"
+                        , Expression.List
+                          [ Expression.App (Bound.F <$> field) (pure $ Bound.B index)
+                          | (index, field) <- indexedConstrFields
+                          ]
+                        ]
                   ]
               )
             | (constr, constrFields) <- constrs
@@ -680,13 +685,14 @@ instance (HasElmEncoder Aeson.Value a, HasElmEncoder Aeson.Value b) => HasElmEnc
       Expression.Case (pure $ Bound.B ())
         [ ( Pattern.tuple (Pattern.Var 0) (Pattern.Var 1)
           , Bound.toScope $
-            Expression.apps "Json.Encode.list"
-            [ "Basics.identity"
-            , Expression.List
-                [ Expression.App (elmEncoder @Aeson.Value @a) $ pure $ Bound.B 0
-                , Expression.App (elmEncoder @Aeson.Value @b) $ pure $ Bound.B 1
-                ]
-            ]
+            Expression.apps
+              "Json.Encode.list"
+              [ "Basics.identity"
+              , Expression.List
+                  [ Expression.App (elmEncoder @Aeson.Value @a) $ pure $ Bound.B 0
+                  , Expression.App (elmEncoder @Aeson.Value @b) $ pure $ Bound.B 1
+                  ]
+              ]
           )
         ]
 
