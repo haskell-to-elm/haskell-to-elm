@@ -12,7 +12,8 @@ precise types on the Elm side.
   - [x] Separate pretty printing from code generation: [elm-syntax](https://github.com/folq/elm-syntax)
 - [x] Generate Elm modules
 - [x] Servant client library generation: [servant-elm-bidirectional](https://github.com/folq/servant-elm-bidirectional)
-- [ ] Test that encoding and decoding round-trip with different Aeson settings
+- [x] Test that encoding and decoding round-trip: [elm-to-haskell-test](https://github.com/folq/elm-to-haskell-test)
+- [ ] Support different Aeson settings
 
 ## Related projects
 
@@ -20,6 +21,7 @@ Libraries that use or are used by haskell-to-elm:
 - [elm-syntax](https://github.com/folq/elm-syntax)
 - [servant-elm-bidirectional](https://github.com/folq/servant-elm-bidirectional)
 - [servant-foreign-bidirectional](https://github.com/folq/servant-foreign-bidirectional)
+- [haskell-to-elm-test](https://github.com/folq/haskell-to-elm-test)
 
 Others:
 - [elm-export](http://hackage.haskell.org/package/elm-export)
