@@ -13,7 +13,6 @@ precise types on the Elm side.
 - [x] Generate Elm modules
 - [x] Servant client library generation: [servant-elm-bidirectional](https://github.com/folq/servant-elm-bidirectional)
 - [x] Test that encoding and decoding round-trip: [elm-to-haskell-test](https://github.com/folq/elm-to-haskell-test)
-- [ ] Support different Aeson settings
 
 ## Related projects
 
