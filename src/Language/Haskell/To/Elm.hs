@@ -312,7 +312,7 @@ deriveElmJSONDecoder options aesonOptions decoderName =
         in
         case constrFields of
           [constrField] ->
-            constrField
+            Expression.apps "Json.Decode.map" [qualifiedConstr, constrField]
 
           _ ->
             foldl'
