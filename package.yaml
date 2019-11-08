@@ -27,6 +27,7 @@ dependencies:
 - generics-sop
 - protolude
 - text
+- time
 - unordered-containers
 
 ghc-options:

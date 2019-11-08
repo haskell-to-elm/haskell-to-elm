@@ -24,6 +24,7 @@ import Data.HashMap.Lazy (HashMap)
 import qualified Data.HashMap.Lazy as HashMap
 import Data.String
 import Data.Text (Text)
+import Data.Time
 import Generics.SOP as SOP
 
 import Language.Elm.Definition (Definition)
@@ -670,6 +671,18 @@ instance HasElmDecoder Aeson.Value Char where
             )
           ]
       )
+
+instance HasElmType UTCTime where
+  elmType =
+    "Time.Posix"
+
+instance HasElmEncoder Aeson.Value UTCTime where
+  elmEncoder =
+    "Iso8601.encode"
+
+instance HasElmDecoder Aeson.Value UTCTime where
+  elmDecoder =
+    "Iso8601.decoder"
 
 instance HasElmEncoder a b => HasElmEncoder (Maybe a) (Maybe b) where
   elmEncoder = Expression.App "Maybe.map" (elmEncoder @a @b)
