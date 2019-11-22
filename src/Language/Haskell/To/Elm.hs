@@ -640,6 +640,10 @@ instance HasElmEncoder Text Int where
   elmEncoder =
     "String.fromInt"
 
+instance HasElmEncoder Text Double where
+  elmEncoder =
+    "String.fromFloat"
+
 instance HasElmEncoder Aeson.Value Text where
   elmEncoder =
     "Json.Encode.string"
