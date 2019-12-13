@@ -39,35 +39,64 @@ import qualified Language.Elm.Type as Type
 -------------------------------------------------------------------------------
 -- * Classes
 
+-- | Represents that the corresponding Elm type for the Haskell type @a@ is @'elmType' \@a@.
+--
+-- This class has a default instance for types that satisfy 'HasElmDefinition',
+-- which refers to the name of that definition.
 class HasElmType a where
   elmType :: Type v
   default elmType :: HasElmDefinition a => Type v
   elmType = Type.Global $ Definition.name $ elmDefinition @a
 
+-- | Represents that we can generate the definition for the Elm type that
+-- corresponds to @a@ using @'elmDefinition' \@a@.
+--
+-- See 'deriveElmTypeDefinition' for a way to automatically derive 'elmDefinition'.
 class HasElmDefinition a where
   elmDefinition :: Definition
 
-class HasElmDecoderDefinition value a where
-  elmDecoderDefinition :: Definition
-
-class HasElmEncoderDefinition value a where
-  elmEncoderDefinition :: Definition
-
+-- | Represents that the Elm type that corresponds to @a@ has a decoder from
+-- @value@, namely @elmDecoder \@value \@a@.
+--
+-- This class has a default instance for types that satisfy
+-- 'HasElmDecoderDefinition', which refers to the name of that definition.
 class HasElmType a => HasElmDecoder value a where
   elmDecoder :: Expression v
   default elmDecoder :: HasElmDecoderDefinition value a => Expression v
   elmDecoder = Expression.Global $ Definition.name $ elmDecoderDefinition @value @a
 
+-- | Represents that the Elm type that corresponds to @a@ has an encoder into
+-- @value@, namely @elmEncoder \@value \@a@.
+--
+-- This class has a default instance for types that satisfy
+-- 'HasElmEncoderDefinition', which refers to the name of that definition.
 class HasElmType a => HasElmEncoder value a where
   elmEncoder :: Expression v
   default elmEncoder :: HasElmEncoderDefinition value a => Expression v
   elmEncoder = Expression.Global $ Definition.name $ elmEncoderDefinition @value @a
 
+-- | Represents that we can generate the Elm decoder definition from @value@
+-- for the Elm type that corresponds to @a@.
+--
+-- See 'deriveElmJSONDecoder' for a way to automatically derive
+-- 'elmDecoderDefinition' when @value = 'Aeson.Value'@.
+class HasElmDecoderDefinition value a where
+  elmDecoderDefinition :: Definition
+
+-- | Represents that we can generate the Elm encoder definition into @value@
+-- for the Elm type that corresponds to @a@.
+--
+-- See 'deriveElmJSONEncoder for a way to automatically derive
+-- 'elmEncoderDefinition' when @value = 'Aeson.Value'@.
+class HasElmEncoderDefinition value a where
+  elmEncoderDefinition :: Definition
+
 -------------------------------------------------------------------------------
 -- * Derivers
 
+-- | Elm code generation options
 newtype Options = Options
-  { fieldLabelModifier :: String -> String
+  { fieldLabelModifier :: String -> String -- ^ Use this function to go from Haskell record field name to Elm record field name.
   }
 
 defaultOptions :: Options
@@ -76,6 +105,15 @@ defaultOptions =
     { fieldLabelModifier = identity
     }
 
+-- | Automatically create an Elm definition given a Haskell type.
+--
+-- This is suitable for use as a 'HasElmDefinition' instance:
+--
+-- @
+-- instance 'HasElmDefinition' MyType where
+--   'elmDefinition' =
+--     'deriveElmTypeDefinition' \@MyType 'defaultOptions' "Api.MyType.MyType"
+-- @
 deriveElmTypeDefinition :: forall a. (HasDatatypeInfo a, All2 HasElmType (Code a)) => Options -> Name.Qualified -> Definition
 deriveElmTypeDefinition options name =
   case datatypeInfo (Proxy @a) of
@@ -115,6 +153,18 @@ deriveElmTypeDefinition options name =
         go :: forall x xs v. (HasElmType x, All HasElmType xs) => Shape (x ': xs) -> [Type v]
         go (ShapeCons s') = elmType @x : constructorFields s'
 
+-- | Automatically create an Elm JSON decoder definition given a Haskell type.
+--
+-- This is suitable for use as a @'HasElmDecoderDefinition' 'Aeson.Value'@ instance:
+--
+-- @
+-- instance 'HasElmDecoderDefinition' 'Aeson.Value' MyType where
+--   'elmDecoderDefinition' =
+--     'deriveElmJSONDecoder' \@MyType 'defaultOptions' 'Aeson.defaultOptions' "Api.MyType.decoder"
+-- @
+--
+-- Uses the given 'Aeson.Options' to match the JSON format of derived
+-- 'Aeson.FromJSON' and 'Aeson.ToJSON' instances.
 deriveElmJSONDecoder
   :: forall a
   . (HasDatatypeInfo a, HasElmType a, All2 (HasElmDecoder Aeson.Value) (Code a))
@@ -370,6 +420,18 @@ deriveElmJSONDecoder options aesonOptions decoderName =
     allNullary :: forall c f. [(c, [f])] -> Bool
     allNullary = all (null . snd)
 
+-- | Automatically create an Elm JSON encoder definition given a Haskell type.
+--
+-- This is suitable for use as a @'HasElmEncoderDefinition' 'Aeson.Value'@ instance:
+--
+-- @
+-- instance 'HasElmEncoderDefinition' 'Aeson.Value' MyType where
+--   'elmEncoderDefinition' =
+--     'deriveElmJSONEncoder' \@MyType 'defaultOptions' 'Aeson.defaultOptions' "Api.MyType.encoder"
+-- @
+--
+-- Uses the given 'Aeson.Options' to match the JSON format of derived
+-- 'Aeson.FromJSON' and 'Aeson.ToJSON' instances.
 deriveElmJSONEncoder
   :: forall a
   . (HasDatatypeInfo a, HasElmType a, All2 (HasElmEncoder Aeson.Value) (Code a))
