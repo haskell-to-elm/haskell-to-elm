@@ -807,6 +807,10 @@ instance (HasElmDecoder Aeson.Value a, HasElmDecoder Aeson.Value b) => HasElmDec
       , Expression.apps "Json.Decode.index" [Expression.Int 1, elmDecoder @Aeson.Value @b]
       ]
 
+-- | A shorthand for a list of the type definitions for
+-- @'jsonDefinitions' \@MyType@ is a shorthand for creating a list of its
+-- 'elmDefinition', @'elmEncoderDefinition' \@'Aeson.Value'@, and
+-- @'elmDecoderDefinition' \@'Aeson.Value'@.
 jsonDefinitions :: forall t. (HasElmDefinition t, HasElmEncoderDefinition Aeson.Value t, HasElmDecoderDefinition Aeson.Value t) => [Definition]
 jsonDefinitions =
   [ elmDefinition @t
