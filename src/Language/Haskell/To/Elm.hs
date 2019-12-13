@@ -56,7 +56,7 @@ class HasElmDefinition a where
   elmDefinition :: Definition
 
 -- | Represents that the Elm type that corresponds to @a@ has a decoder from
--- @value@, namely @elmDecoder \@value \@a@.
+-- @value@, namely @'elmDecoder' \@value \@a@.
 --
 -- This class has a default instance for types that satisfy
 -- 'HasElmDecoderDefinition', which refers to the name of that definition.
@@ -66,7 +66,7 @@ class HasElmType a => HasElmDecoder value a where
   elmDecoder = Expression.Global $ Definition.name $ elmDecoderDefinition @value @a
 
 -- | Represents that the Elm type that corresponds to @a@ has an encoder into
--- @value@, namely @elmEncoder \@value \@a@.
+-- @value@, namely @'elmEncoder' \@value \@a@.
 --
 -- This class has a default instance for types that satisfy
 -- 'HasElmEncoderDefinition', which refers to the name of that definition.
@@ -86,7 +86,7 @@ class HasElmDecoderDefinition value a where
 -- | Represents that we can generate the Elm encoder definition into @value@
 -- for the Elm type that corresponds to @a@.
 --
--- See 'deriveElmJSONEncoder for a way to automatically derive
+-- See 'deriveElmJSONEncoder' for a way to automatically derive
 -- 'elmEncoderDefinition' when @value = 'Aeson.Value'@.
 class HasElmEncoderDefinition value a where
   elmEncoderDefinition :: Definition
