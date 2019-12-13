@@ -55,3 +55,19 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - haskell-to-elm
+
+flags:
+  examples:
+    description: Build examples
+    manual: true
+    default: false
+
+executables:
+  user-example:
+    source-dirs: examples
+    main: User.hs
+    dependencies:
+      - haskell-to-elm
+    when:
+      condition: "!flag(examples)"
+      buildable: false
