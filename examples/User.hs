@@ -9,7 +9,6 @@ module Simple where
 import Protolude
 
 import qualified Data.Aeson as Aeson
-import Data.Time
 import qualified Data.HashMap.Lazy as HashMap
 import qualified Generics.SOP as SOP
 
@@ -18,7 +17,7 @@ import Language.Haskell.To.Elm
 
 data User = User
   { name :: Text
-  , birthday :: Day
+  , age :: Int
   } deriving
     ( Generic
     , Aeson.ToJSON

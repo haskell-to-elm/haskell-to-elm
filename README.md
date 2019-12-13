@@ -40,7 +40,7 @@ Now, let's say we want to change a field in the backend:
 data User = User
   { name :: Text
 --, age :: Int
-  , birthday :: Day -- <---- new!
+  , birthday :: Date -- <---- new!
   } deriving (Generic, ToJSON)
 ```
 
@@ -66,7 +66,7 @@ To generate code for the `User` type above, we first need to derive a bunch of c
 ```haskell
 data User = User
   { name :: Text
-  , birthday :: Day
+  , age :: Int
   } deriving
     ( Generic
     , Aeson.ToJSON
@@ -111,28 +111,26 @@ Running `main` will print the following Elm code:
 ```elm
 module Api.User exposing (..)
 
-import Date
-import Date.Extra
 import Json.Decode
 import Json.Decode.Pipeline
 import Json.Encode
 
 
 type alias User =
-    { name : String, birthday : Date.Date }
+    { name : String, age : Int }
 
 
 encoder : User -> Json.Encode.Value
 encoder a =
     Json.Encode.object [ ("name" , Json.Encode.string a.name)
-    , ("birthday" , Date.Extra.encode a.birthday) ]
+    , ("age" , Json.Encode.int a.age) ]
 
 
 decoder : Json.Decode.Decoder User
 decoder =
     Json.Decode.succeed User |>
     Json.Decode.Pipeline.required "name" Json.Decode.string |>
-    Json.Decode.Pipeline.required "birthday" Date.Extra.decoder
+    Json.Decode.Pipeline.required "age" Json.Decode.int
 ```
 
 In an actual project we would be writing the code to disk instead of printing it.
