@@ -59,7 +59,7 @@ frontend code when you change your backend types.
 The companion library [servant-elm-bidirectional](https://github.com/folq/servant-elm-bidirectional) also
 lets you generate Elm client libraries for your Servant APIs.
 
-# Basic usage
+## Basic usage
 
 To generate code for the `User` type above, we first need to derive a bunch of class instances:
 
