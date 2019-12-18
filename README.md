@@ -153,7 +153,6 @@ Libraries that use or are used by haskell-to-elm:
 - [elm-syntax](https://github.com/folq/elm-syntax) defines Haskell ASTs for Elm's syntax, and lets us pretty-print it.
 - [servant-elm-bidirectional](https://github.com/folq/servant-elm-bidirectional) can be used to generate Elm client libraries from Servant APIs.
 - [haskell-to-elm-test](https://github.com/folq/haskell-to-elm-test) does end-to-end testing of this library.
-- [servant-foreign-bidirectional](https://github.com/folq/servant-foreign-bidirectional) is used by `servant-elm-bidirectional`
 
 Others:
 - [elm-export](http://hackage.haskell.org/package/elm-export)
