@@ -24,7 +24,7 @@ dependencies:
 - base >= 4.7 && < 5
 - bound >= 2.0.0
 - elm-syntax >= 0.1.0 && < 0.1.1
-- generics-sop >= 0.4.0
+- generics-sop >= 0.4.0 && < 0.5.0
 - protolude >= 0.2.3
 - text >= 1.2.0
 - time >= 1.8.0
