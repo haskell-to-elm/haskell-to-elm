@@ -20,15 +20,15 @@ category:            Elm, Compiler, Language
 description:         Please see the README on GitHub at <https://github.com/folq/haskell-to-elm#readme>
 
 dependencies:
-- aeson
+- aeson >= 1.4.0
 - base >= 4.7 && < 5
-- bound
-- elm-syntax
-- generics-sop
-- protolude
-- text
-- time
-- unordered-containers
+- bound >= 2.0.0
+- elm-syntax >= 0.1.0 && < 0.1.1
+- generics-sop >= 0.4.0
+- protolude >= 0.2.3
+- text >= 1.2.0
+- time >= 1.8.0
+- unordered-containers >= 0.2.8
 
 ghc-options:
   - -Wall
