@@ -56,7 +56,7 @@ With `haskell-to-elm` as part of your build pipeline you can make sure that the
 frontend is always in sync with your backend, and get type errors in your
 frontend code when you change your backend types.
 
-The companion library [servant-elm-bidirectional](https://github.com/folq/servant-elm-bidirectional) also
+The companion library [servant-to-elm](https://github.com/folq/servant-to-elm) also
 lets you generate Elm client libraries for your Servant APIs.
 
 ## Basic usage
@@ -144,14 +144,14 @@ See [this file](examples/User.hs) for the full code with imports.
 - [x] Pretty-print the Elm AST
   - [x] Separate pretty printing from code generation: [elm-syntax](https://github.com/folq/elm-syntax)
 - [x] Generate Elm modules
-- [x] Servant client library generation: [servant-elm-bidirectional](https://github.com/folq/servant-elm-bidirectional)
+- [x] Servant client library generation: [servant-to-elm](https://github.com/folq/servant-to-elm)
 - [x] Test that encoding and decoding round-trip: [elm-to-haskell-test](https://github.com/folq/elm-to-haskell-test)
 
 ## Related projects
 
 Libraries that use or are used by haskell-to-elm:
 - [elm-syntax](https://github.com/folq/elm-syntax) defines Haskell ASTs for Elm's syntax, and lets us pretty-print it.
-- [servant-elm-bidirectional](https://github.com/folq/servant-elm-bidirectional) can be used to generate Elm client libraries from Servant APIs.
+- [servant-to-elm](https://github.com/folq/servant-to-elm) can be used to generate Elm client libraries from Servant APIs.
 - [haskell-to-elm-test](https://github.com/folq/haskell-to-elm-test) does end-to-end testing of this library.
 
 Others:
