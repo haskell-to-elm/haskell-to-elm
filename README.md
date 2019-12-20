@@ -67,27 +67,19 @@ To generate code for the `User` type above, we first need to derive a bunch of c
 data User = User
   { name :: Text
   , age :: Int
-  } deriving
-    ( Generic
-    , Aeson.ToJSON
-    , SOP.Generic
-    , SOP.HasDatatypeInfo
-    , HasElmDecoder Aeson.Value
-    , HasElmEncoder Aeson.Value
-    , HasElmType
-    )
+  } deriving (Generic, Aeson.ToJSON, SOP.Generic, SOP.HasDatatypeInfo)
 
-instance HasElmDefinition User where
+instance HasElmType User where
   elmDefinition =
-    deriveElmTypeDefinition @User defaultOptions "Api.User.User"
+    Just $ deriveElmTypeDefinition @User defaultOptions "Api.User.User"
 
-instance HasElmDecoderDefinition Aeson.Value User where
+instance HasElmDecoder Aeson.Value User where
   elmDecoderDefinition =
-    deriveElmJSONDecoder @User defaultOptions Aeson.defaultOptions "Api.User.decoder"
+    Just $ deriveElmJSONDecoder @User defaultOptions Aeson.defaultOptions "Api.User.decoder"
 
-instance HasElmEncoderDefinition Aeson.Value User where
+instance HasElmEncoder Aeson.Value User where
   elmEncoderDefinition =
-    deriveElmJSONEncoder @User defaultOptions Aeson.defaultOptions "Api.User.encoder"
+    Just $ deriveElmJSONEncoder @User defaultOptions Aeson.defaultOptions "Api.User.encoder"
 ```
 
 Then we can print the generated Elm code using the following code:
