@@ -2,6 +2,10 @@
 
 ## Unreleased changes
 
+## 0.2.1.0
+
+- Update to `elm-syntax-0.2.0.0`, adding simplification of the generated definitions
+
 ## 0.2.0.0
 
 - Merged the `HasElmType` and `HasElmDefinition` classes
