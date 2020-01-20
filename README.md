@@ -89,7 +89,8 @@ main :: IO ()
 main = do
   let
     definitions =
-      jsonDefinitions @User
+      Simplification.simplifyDefinition <$>
+        jsonDefinitions @User
 
     modules =
       Pretty.modules definitions

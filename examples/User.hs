@@ -13,6 +13,7 @@ import qualified Data.HashMap.Lazy as HashMap
 import qualified Generics.SOP as SOP
 
 import qualified Language.Elm.Pretty as Pretty
+import qualified Language.Elm.Simplification as Simplification
 import Language.Haskell.To.Elm
 
 data User = User
@@ -36,7 +37,8 @@ main :: IO ()
 main = do
   let
     definitions =
-      jsonDefinitions @User
+      Simplification.simplifyDefinition <$>
+        jsonDefinitions @User
 
     modules =
       Pretty.modules definitions
