@@ -138,7 +138,7 @@ See [this file](examples/User.hs) for the full code with imports.
   - [x] Separate pretty printing from code generation: [elm-syntax](https://github.com/folq/elm-syntax)
 - [x] Generate Elm modules
 - [x] Servant client library generation: [servant-to-elm](https://github.com/folq/servant-to-elm)
-- [x] Test that encoding and decoding round-trip: [elm-to-haskell-test](https://github.com/folq/elm-to-haskell-test)
+- [x] Test that encoding and decoding round-trip: [haskell-to-elm-test](https://github.com/folq/haskell-to-elm-test)
 
 ## Related projects
 
