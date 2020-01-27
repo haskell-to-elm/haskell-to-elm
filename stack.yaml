@@ -2,4 +2,4 @@ resolver: lts-14.0
 packages:
 - .
 extra-deps:
-- elm-syntax-0.2.0.0
+- elm-syntax-0.3.0.0

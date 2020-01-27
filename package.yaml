@@ -23,7 +23,7 @@ dependencies:
 - aeson >= 1.4.0
 - base >= 4.7 && < 5
 - bound >= 2.0.0
-- elm-syntax >= 0.2.0 && < 0.2.1
+- elm-syntax >= 0.3.0 && < 0.3.1
 - generics-sop >= 0.4.0 && < 0.6.0
 - protolude >= 0.2.3
 - text >= 1.2.0
