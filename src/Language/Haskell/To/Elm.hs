@@ -58,10 +58,14 @@ class HasElmType a where
   -- When 'Nothing', it means that the type is an already existing Elm type
   -- that does not need to be generated.
   elmDefinition :: Maybe Definition
+  default elmDefinition :: Maybe Definition
   elmDefinition =
+    elmDefinition' $ Proxy @a
+  elmDefinition' :: Proxy a -> Maybe Definition
+  elmDefinition' _ =
     Nothing
 
-  {-# minimal elmType | elmDefinition #-}
+  {-# minimal elmType | elmDefinition | elmDefinition' #-}
 
 -- | Represents that the Elm type that corresponds to @a@ has a decoder from
 -- @value@, namely @'elmDecoder' \@value \@a@.
