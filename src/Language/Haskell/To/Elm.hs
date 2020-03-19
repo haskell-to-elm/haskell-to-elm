@@ -25,6 +25,7 @@ import qualified Data.HashMap.Lazy as HashMap
 import Data.String
 import Data.Text (Text)
 import Data.Time
+import Data.UUID.Types (UUID)
 import Generics.SOP as SOP
 
 import Language.Elm.Definition (Definition)
@@ -747,6 +748,18 @@ instance HasElmDecoder Aeson.Value UTCTime where
   elmDecoder =
     "Iso8601.decoder"
 
+instance HasElmType UUID where
+  elmType =
+    "String.String"
+
+instance HasElmEncoder Aeson.Value UUID where
+  elmEncoder =
+    "Json.Encode.string"
+
+instance HasElmDecoder Aeson.Value UUID where
+  elmDecoder =
+    "Json.Decode.string"
+
 instance HasElmEncoder a b => HasElmEncoder (Maybe a) (Maybe b) where
   elmEncoder = Expression.App "Maybe.map" (elmEncoder @a @b)
 
@@ -803,6 +816,55 @@ instance (HasElmDecoder Aeson.Value a, HasElmDecoder Aeson.Value b) => HasElmDec
       , Expression.apps "Json.Decode.index" [Expression.Int 0, elmDecoder @Aeson.Value @a]
       , Expression.apps "Json.Decode.index" [Expression.Int 1, elmDecoder @Aeson.Value @b]
       ]
+
+instance HasElmType a => HasElmType (NonEmpty a) where
+  elmType =
+    Type.App "List.Nonempty.Nonempty" (elmType @a)
+
+instance HasElmEncoder Aeson.Value a => HasElmEncoder Aeson.Value (NonEmpty a) where
+  elmEncoder =
+    Expression.Lam (Bound.toScope ("Json.Encode.list" `Expression.App`
+      elmEncoder @Aeson.Value @a `Expression.App`
+        Expression.App "List.Nonempty.toList" (pure $ Bound.B ())))
+
+instance HasElmDecoder Aeson.Value a => HasElmDecoder Aeson.Value (NonEmpty a) where
+  elmDecoder =
+    "Json.Decode.andThen" `Expression.App`
+      Expression.Lam (Bound.toScope ("Maybe.Extra.unwrap" `Expression.App`
+        Expression.App "Json.Decode.fail" (Expression.String "empty list")
+          `Expression.App` "Json.Decode.succeed" `Expression.App`
+            Expression.App "List.Nonempty.fromList" (pure $ Bound.B ())))
+      `Expression.App` Expression.App "Json.Decode.list" (elmDecoder @Aeson.Value @a)
+
+-- | @Set@ is encoded as a @List@ for custom types.
+instance HasElmType a => HasElmType (Set a) where
+  elmType =
+    Type.App "List.List" (elmType @a)
+
+-- | @Set@ is encoded as a @List@ for custom types.
+instance HasElmEncoder Aeson.Value a => HasElmEncoder Aeson.Value (Set a) where
+  elmEncoder =
+    Expression.App "Json.Encode.list" (elmEncoder @Aeson.Value @a)
+
+-- | @Set@ is decoded as a @List@ for custom types.
+instance HasElmDecoder Aeson.Value a => HasElmDecoder Aeson.Value (Set a) where
+  elmDecoder =
+    Expression.App "Json.Decode.list" (elmDecoder @Aeson.Value @a)
+
+instance (Aeson.ToJSONKey k, Aeson.FromJSONKey k, HasElmType v) => HasElmType (Map k v) where
+  elmType =
+    Type.App (Type.App "Dict.Dict" (elmType @Text)) (elmType @v)
+
+instance (Aeson.ToJSONKey k, Aeson.FromJSONKey k, HasElmEncoder Aeson.Value v) => HasElmEncoder Aeson.Value (Map k v) where
+  elmEncoder =
+    Expression.App
+      (Expression.App "Json.Encode.dict" "Basics.identity")
+        (elmEncoder @Aeson.Value @v)
+
+instance (Aeson.ToJSONKey k, Aeson.FromJSONKey k, HasElmDecoder Aeson.Value v) => HasElmDecoder Aeson.Value (Map k v) where
+  elmDecoder =
+    Expression.App "Json.Decode.dict" (elmDecoder @Aeson.Value @v)
+
 
 -- | A shorthand for a list of the type definitions for
 -- @'jsonDefinitions' \@MyType@ is a shorthand for creating a list of its

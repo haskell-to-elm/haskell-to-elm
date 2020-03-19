@@ -29,6 +29,7 @@ dependencies:
 - text >= 1.2.0
 - time >= 1.8.0
 - unordered-containers >= 0.2.8
+- uuid-types >= 1.0.0
 
 ghc-options:
   - -Wall
