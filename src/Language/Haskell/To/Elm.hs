@@ -137,18 +137,12 @@ defaultOptions =
 -- @
 deriveElmTypeDefinition :: forall a. (HasDatatypeInfo a, All2 HasElmType (Code a)) => Options -> Name.Qualified -> Definition
 deriveElmTypeDefinition options name =
-  case datatypeInfo (Proxy @a) of
-    ADT _mname _tname (Record _cname fields :* Nil) ->
+  case constructorInfo $ datatypeInfo (Proxy @a) of
+    Record _cname fields :* Nil ->
       Definition.Alias name (Type.Record (recordFields fields))
 
-    ADT _mname _tname cs ->
+    cs ->
       Definition.Type name (constructors cs)
-
-    Newtype _mname _tname (Record _cname fields) ->
-      Definition.Alias name (Type.Record (recordFields fields))
-
-    Newtype _mname _tname c ->
-      Definition.Type name (constructors (c :* Nil))
   where
     recordFields :: All HasElmType xs => NP FieldInfo xs -> [(Name.Field, Type v)]
     recordFields Nil = []
@@ -196,8 +190,8 @@ deriveElmJSONDecoder
   -> Definition
 deriveElmJSONDecoder options aesonOptions decoderName =
   Definition.Constant decoderName (Type.App "Json.Decode.Decoder" $ elmType @a) $
-  case datatypeInfo (Proxy @a) of
-    ADT _mname _tname (Record _cname fields :* Nil) ->
+  case constructorInfo $ datatypeInfo (Proxy @a) of
+    Record _cname fields :* Nil ->
       decodeRecord fields $
       Expression.App "Json.Decode.succeed" $
       case Type.appsView (elmType @a) of
@@ -207,21 +201,8 @@ deriveElmJSONDecoder options aesonOptions decoderName =
         _ ->
           Expression.Global typeName
 
-    ADT _mname _tname cs ->
+    cs ->
       decodeConstructors $ constructors cs
-
-    Newtype _mname _tname (Record _cname fields) ->
-      decodeRecord fields $
-      Expression.App "Json.Decode.succeed" $
-      case Type.appsView (elmType @a) of
-        (Type.Record fieldTypes, _) ->
-          explicitRecordConstructor $ fst <$> fieldTypes
-
-        _ ->
-          Expression.Global typeName
-
-    Newtype _mname _tname c ->
-      decodeConstructors $ constructors (c :* Nil)
   where
     typeName@(Name.Qualified moduleName_ _) =
       case Type.appsView (elmType @a) of
@@ -464,18 +445,12 @@ deriveElmJSONEncoder
 deriveElmJSONEncoder options aesonOptions encoderName =
   Definition.Constant encoderName (Type.Fun (elmType @a) "Json.Encode.Value") $
   Expression.Lam $ Bound.toScope $
-    case datatypeInfo (Proxy @a) of
-      ADT _mname _tname (Record _cname fields :* Nil) ->
+    case constructorInfo $ datatypeInfo (Proxy @a) of
+      Record _cname fields :* Nil ->
         encodeRecord fields $ pure $ Bound.B ()
 
-      ADT _mname _tname cs ->
+      cs ->
         encodeConstructors (constructors cs) (pure $ Bound.B ())
-
-      Newtype _mname _tname (Record _cname fields) ->
-        encodeRecord fields $ pure $ Bound.B ()
-
-      Newtype _mname _tname c ->
-        encodeConstructors (constructors (c :* Nil)) (pure $ Bound.B ())
   where
     (Name.Qualified moduleName_ _) =
       case Type.appsView (elmType @a) of
