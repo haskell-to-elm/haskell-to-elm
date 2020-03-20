@@ -71,3 +71,12 @@ executables:
     when:
       condition: "!flag(examples)"
       buildable: false
+
+  parameterised-example:
+    source-dirs: examples
+    main: Parameterised.hs
+    dependencies:
+      - haskell-to-elm
+    when:
+      condition: "!flag(examples)"
+      buildable: false
