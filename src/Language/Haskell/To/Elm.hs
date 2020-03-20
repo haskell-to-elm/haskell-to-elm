@@ -17,13 +17,14 @@
 module Language.Haskell.To.Elm where
 
 import qualified Bound
-import Data.Foldable
 import qualified Data.Aeson as Aeson
+import Data.Foldable
 import Data.HashMap.Lazy (HashMap)
 import qualified Data.HashMap.Lazy as HashMap
+import qualified Data.Kind
+import Data.Maybe (catMaybes)
 import Data.String
 import Data.Text (Text)
-import Data.Maybe (catMaybes)
 import Data.Time
 import Generics.SOP as SOP
 import GHC.TypeLits
@@ -147,7 +148,7 @@ deriveElmTypeDefinition
 deriveElmTypeDefinition =
   deriveParameterisedElmTypeDefinition @0 @a
 
-class DeriveParameterisedElmTypeDefinition numParams (a :: k) where
+class DeriveParameterisedElmTypeDefinition numParams a where
   deriveParameterisedElmTypeDefinition :: Options -> Name.Qualified -> Definition
 
 data Parameter (n :: Nat)
@@ -160,11 +161,11 @@ instance KnownNat n => HasElmType (Parameter n) where
   elmType =
     Type.Global $ parameterName $ fromIntegral $ natVal $ Proxy @n
 
-instance (DeriveParameterisedElmTypeDefinition (numParams + 1) (f (Parameter numParams))) => DeriveParameterisedElmTypeDefinition numParams (f :: * -> b) where
+instance (DeriveParameterisedElmTypeDefinition (numParams + 1) (f (Parameter numParams))) => DeriveParameterisedElmTypeDefinition numParams (f :: Data.Kind.Type -> b) where
   deriveParameterisedElmTypeDefinition =
     deriveParameterisedElmTypeDefinition @(numParams + 1) @(f (Parameter numParams))
 
-instance (KnownNat numParams, HasDatatypeInfo a, All2 HasElmType (Code a)) => DeriveParameterisedElmTypeDefinition numParams (a :: *) where
+instance (KnownNat numParams, HasDatatypeInfo a, All2 HasElmType (Code a)) => DeriveParameterisedElmTypeDefinition numParams (a :: Data.Kind.Type) where
   deriveParameterisedElmTypeDefinition options name =
     case constructorInfo $ datatypeInfo (Proxy @a) of
       Record _cname fields :* Nil ->
@@ -238,7 +239,7 @@ deriveElmJSONDecoder
 deriveElmJSONDecoder =
   deriveParameterisedElmDecoderDefinition @0 @Aeson.Value @a
 
-class DeriveParameterisedElmDecoderDefinition numParams value (a :: k) where
+class DeriveParameterisedElmDecoderDefinition numParams value a where
   deriveParameterisedElmDecoderDefinition :: Options -> Aeson.Options -> Name.Qualified -> Definition
 
 instance KnownNat n => HasElmDecoder value (Parameter n) where
@@ -246,12 +247,12 @@ instance KnownNat n => HasElmDecoder value (Parameter n) where
     Expression.Global $
       parameterName $ fromIntegral $ natVal $ Proxy @n
 
-instance (DeriveParameterisedElmDecoderDefinition (numParams + 1) value (f (Parameter numParams))) => DeriveParameterisedElmDecoderDefinition numParams value (f :: * -> b) where
+instance (DeriveParameterisedElmDecoderDefinition (numParams + 1) value (f (Parameter numParams))) => DeriveParameterisedElmDecoderDefinition numParams value (f :: Data.Kind.Type -> b) where
   deriveParameterisedElmDecoderDefinition =
     deriveParameterisedElmDecoderDefinition @(numParams + 1) @value @(f (Parameter numParams))
 
 instance (HasElmType a, KnownNat numParams, HasDatatypeInfo a, All2 (HasElmDecoder Aeson.Value) (Code a))
-  => DeriveParameterisedElmDecoderDefinition numParams Aeson.Value (a :: *) where
+  => DeriveParameterisedElmDecoderDefinition numParams Aeson.Value (a :: Data.Kind.Type) where
   deriveParameterisedElmDecoderDefinition options aesonOptions decoderName =
     Definition.Constant decoderName numParams parameterisedType $
       parameteriseBody $
@@ -555,7 +556,7 @@ deriveElmJSONEncoder
 deriveElmJSONEncoder =
   deriveParameterisedElmEncoderDefinition @0 @Aeson.Value @a
 
-class DeriveParameterisedElmEncoderDefinition numParams value (a :: k) where
+class DeriveParameterisedElmEncoderDefinition numParams value a where
   deriveParameterisedElmEncoderDefinition :: Options -> Aeson.Options -> Name.Qualified -> Definition
 
 instance KnownNat n => HasElmEncoder value (Parameter n) where
@@ -563,12 +564,12 @@ instance KnownNat n => HasElmEncoder value (Parameter n) where
     Expression.Global $
       parameterName $ fromIntegral $ natVal $ Proxy @n
 
-instance (DeriveParameterisedElmEncoderDefinition (numParams + 1) value (f (Parameter numParams))) => DeriveParameterisedElmEncoderDefinition numParams value (f :: * -> b) where
+instance (DeriveParameterisedElmEncoderDefinition (numParams + 1) value (f (Parameter numParams))) => DeriveParameterisedElmEncoderDefinition numParams value (f :: Data.Kind.Type -> b) where
   deriveParameterisedElmEncoderDefinition =
     deriveParameterisedElmEncoderDefinition @(numParams + 1) @value @(f (Parameter numParams))
 
 instance (HasElmType a, KnownNat numParams, HasDatatypeInfo a, All2 (HasElmEncoder Aeson.Value) (Code a))
-  => DeriveParameterisedElmEncoderDefinition numParams Aeson.Value (a :: *) where
+  => DeriveParameterisedElmEncoderDefinition numParams Aeson.Value (a :: Data.Kind.Type) where
   deriveParameterisedElmEncoderDefinition options aesonOptions encoderName =
     Definition.Constant encoderName numParams parameterisedType $
       parameteriseBody $

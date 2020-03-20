@@ -2,6 +2,9 @@
 
 ## Unreleased changes
 
+## 0.3.0.0
+
+- Make compatible with GHC 8.8
 - Add support for parameterised types
 
 ## 0.2.1.0
