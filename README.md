@@ -178,10 +178,9 @@ instance (HasElmEncoder Aeson.Value a, HasElmDecoder Aeson.Value b) => HasElmEnc
 ```
 
 The rationale for having two instances of the classes for each type is that we
-both have to describe how the type is defined with the unapplied instances,
-which generates parameterised types, encoders, and decoders, and then we have
-to describe how to actually use those parameterised entities with the applied
-instances.
+both have to describe how the _type_ is defined (with the unapplied instances),
+which generates parameterised definitions, and then we describe how to actually
+use those parameterised definitions with the applied instances.
 
 These instances print the following code when run:
 
@@ -226,10 +225,8 @@ decoder a b =
             Json.Decode.fail "No matching constructor")
 ```
 
-Notice that the generator encoder and decoder are parameterised by the encoder
-and decoder for their argument.
-
-In an actual project we would be writing the code to disk instead of printing it.
+Notice that the generated encoder and decoder are parameterised by the encoder
+and decoder for the type arguments.
 
 See [this file](examples/Parameterised.hs) for the full code with imports.
 
