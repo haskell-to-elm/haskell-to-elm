@@ -130,6 +130,109 @@ In an actual project we would be writing the code to disk instead of printing it
 
 See [this file](examples/User.hs) for the full code with imports.
 
+## Parameterised types
+
+Since version 0.3.0.0, `haskell-to-elm` supports generating code for types with type parameters.
+
+For example, let's say we have the following Haskell type:
+
+```
+data Result e a
+  = Err e
+  | Ok a
+  deriving (Generic, Aeson.ToJSON, SOP.Generic, SOP.HasDatatypeInfo)
+```
+
+We can derive the corresponding Elm type and JSON encoders and decoder
+definitions with the following code:
+
+```
+instance HasElmType Result where
+  elmDefinition =
+    Just $ deriveElmTypeDefinition @Result defaultOptions "Api.Result.Result"
+
+instance HasElmDecoder Aeson.Value Result where
+  elmDecoderDefinition =
+    Just $ deriveElmJSONDecoder @Result defaultOptions Aeson.defaultOptions "Api.Result.decoder"
+
+instance HasElmEncoder Aeson.Value Result where
+  elmEncoderDefinition =
+    Just $ deriveElmJSONEncoder @Result defaultOptions Aeson.defaultOptions "Api.Result.encoder"
+```
+
+For parameterised types we also have to add instances for how to handle the
+type when it's fully applied to type arguments. Like this:
+
+```
+instance (HasElmType a, HasElmType b) => HasElmType (Result a b) where
+  elmType =
+    Type.apps (elmType @Result) [elmType @a, elmType @b]
+
+instance (HasElmDecoder Aeson.Value a, HasElmDecoder Aeson.Value b) => HasElmDecoder Aeson.Value (Result a b) where
+  elmDecoder =
+    Expression.apps (elmDecoder @Aeson.Value @Result) [elmDecoder @Aeson.Value @a, elmDecoder @Aeson.Value @b]
+
+instance (HasElmEncoder Aeson.Value a, HasElmDecoder Aeson.Value b) => HasElmEncoder Aeson.Value (Result a b) where
+  elmEncoder =
+    Expression.apps (elmEncoder @Aeson.Value @Result) [elmEncoder @Aeson.Value @a, elmDecoder @Aeson.Value @b]
+```
+
+The rationale for having two instances of the classes for each type is that we
+both have to describe how the type is defined with the unapplied instances,
+which generates parameterised types, encoders, and decoders, and then we have
+to describe how to actually use those parameterised entities with the applied
+instances.
+
+These instances print the following code when run:
+
+```elm
+module Api.Result exposing (..)
+
+import Json.Decode
+import Json.Decode.Pipeline
+import Json.Encode
+
+
+type Result a b
+    = Err a
+    | Ok b
+
+
+encoder : (a -> Json.Encode.Value) -> (b -> Json.Encode.Value) -> Result a b -> Json.Encode.Value
+encoder a b c =
+    case c of
+        Err d ->
+            Json.Encode.object [ ("tag" , Json.Encode.string "Err")
+            , ("contents" , a d) ]
+
+        Ok d ->
+            Json.Encode.object [ ("tag" , Json.Encode.string "Ok")
+            , ("contents" , b d) ]
+
+
+decoder : Json.Decode.Decoder a -> Json.Decode.Decoder b -> Json.Decode.Decoder (Result a b)
+decoder a b =
+    Json.Decode.field "tag" Json.Decode.string |>
+    Json.Decode.andThen (\c -> case c of
+        "Err" ->
+            Json.Decode.succeed Err |>
+            Json.Decode.Pipeline.required "contents" a
+
+        "Ok" ->
+            Json.Decode.succeed Ok |>
+            Json.Decode.Pipeline.required "contents" b
+
+        _ ->
+            Json.Decode.fail "No matching constructor")
+```
+
+Notice that the generator encoder and decoder are parameterised by the encoder
+and decoder for their argument.
+
+In an actual project we would be writing the code to disk instead of printing it.
+
+See [this file](examples/Parameterised.hs) for the full code with imports.
+
 ## Roadmap
 
 - [x] Derive JSON encoders and generically
@@ -139,6 +242,7 @@ See [this file](examples/User.hs) for the full code with imports.
 - [x] Generate Elm modules
 - [x] Servant client library generation: [servant-to-elm](https://github.com/folq/servant-to-elm)
 - [x] Test that encoding and decoding round-trip: [haskell-to-elm-test](https://github.com/folq/haskell-to-elm-test)
+- [x] Support parameterised types
 
 ## Related projects
 
