@@ -1,16 +1,16 @@
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeApplications #-}
+{-# language DeriveAnyClass #-}
+{-# language DeriveGeneric #-}
+{-# language MultiParamTypeClasses #-}
+{-# language OverloadedStrings #-}
+{-# language TypeApplications #-}
 module User where
 
-import Protolude
-
 import qualified Data.Aeson as Aeson
+import Data.Foldable
 import qualified Data.HashMap.Lazy as HashMap
+import Data.Text (Text)
 import qualified Generics.SOP as SOP
+import GHC.Generics
 
 import qualified Language.Elm.Pretty as Pretty
 import qualified Language.Elm.Simplification as Simplification

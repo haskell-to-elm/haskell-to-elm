@@ -1,23 +1,22 @@
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
+{-# language DeriveAnyClass #-}
+{-# language DeriveGeneric #-}
+{-# language FlexibleContexts #-}
+{-# language MultiParamTypeClasses #-}
+{-# language OverloadedStrings #-}
+{-# language ScopedTypeVariables #-}
+{-# language TypeApplications #-}
 module Parameterised where
 
-import Protolude
-
 import qualified Data.Aeson as Aeson
+import Data.Foldable
 import qualified Data.HashMap.Lazy as HashMap
 import qualified Generics.SOP as SOP
+import GHC.Generics
 
+import qualified Language.Elm.Expression as Expression
 import qualified Language.Elm.Pretty as Pretty
 import qualified Language.Elm.Simplification as Simplification
 import qualified Language.Elm.Type as Type
-import qualified Language.Elm.Expression as Expression
 import Language.Haskell.To.Elm
 
 data Result e a

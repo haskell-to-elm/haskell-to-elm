@@ -25,7 +25,6 @@ dependencies:
 - bound >= 2.0.0
 - elm-syntax >= 0.3.0 && < 0.3.1
 - generics-sop >= 0.4.0 && < 0.6.0
-- protolude >= 0.2.3
 - text >= 1.2.0
 - time >= 1.8.0
 - unordered-containers >= 0.2.8

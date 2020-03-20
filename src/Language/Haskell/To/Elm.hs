@@ -1,34 +1,32 @@
-{-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DefaultSignatures #-}
-{-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE PolyKinds #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE UndecidableInstances #-}
-{-# OPTIONS_GHC -Wno-partial-type-signatures #-}
+{-# language AllowAmbiguousTypes #-}
+{-# language DataKinds #-}
+{-# language DefaultSignatures #-}
+{-# language DuplicateRecordFields #-}
+{-# language FlexibleContexts #-}
+{-# language FlexibleInstances #-}
+{-# language GADTs #-}
+{-# language KindSignatures #-}
+{-# language MultiParamTypeClasses #-}
+{-# language OverloadedStrings #-}
+{-# language PartialTypeSignatures #-}
+{-# language PolyKinds #-}
+{-# language ScopedTypeVariables #-}
+{-# language TypeApplications #-}
+{-# language TypeOperators #-}
+{-# language UndecidableInstances #-}
 module Language.Haskell.To.Elm where
 
-import Protolude hiding (All, Infix, Type)
-
 import qualified Bound
+import Data.Foldable
 import qualified Data.Aeson as Aeson
 import Data.HashMap.Lazy (HashMap)
-import GHC.TypeLits
 import qualified Data.HashMap.Lazy as HashMap
 import Data.String
 import Data.Text (Text)
+import Data.Maybe (catMaybes)
 import Data.Time
 import Generics.SOP as SOP
+import GHC.TypeLits
 
 import Language.Elm.Definition (Definition)
 import qualified Language.Elm.Definition as Definition
@@ -49,7 +47,7 @@ class HasElmType a where
   elmType =
     Type.Global $
       maybe
-        (panic "default-implemented 'elmType' without a definition")
+        (error "default-implemented 'elmType' without a definition")
         Definition.name $
           elmDefinition @a
 
@@ -74,7 +72,7 @@ class HasElmType a => HasElmDecoder value a where
   elmDecoder =
     Expression.Global $
       maybe
-        (panic "default-implemented 'elmDecoder' without a definition")
+        (error "default-implemented 'elmDecoder' without a definition")
         Definition.name $
           elmDecoderDefinition @value @a
 
@@ -100,7 +98,7 @@ class HasElmType a => HasElmEncoder value a where
   elmEncoder =
     Expression.Global $
       maybe
-        (panic "default-implemented 'elmEncoder' without a definition")
+        (error "default-implemented 'elmEncoder' without a definition")
         Definition.name $
           elmEncoderDefinition @value @a
 
@@ -126,7 +124,7 @@ newtype Options = Options
 defaultOptions :: Options
 defaultOptions =
   Options
-    { fieldLabelModifier = identity
+    { fieldLabelModifier = id
     }
 
 -- ** Type definitions
@@ -156,7 +154,7 @@ data Parameter (n :: Nat)
 
 parameterName :: Int -> Name.Qualified
 parameterName i =
-  Name.Qualified ["Haskell", "To", "Elm"] ("Parameter" <> show i)
+  Name.Qualified ["Haskell", "To", "Elm"] ("Parameter" <> fromString (show i))
 
 instance KnownNat n => HasElmType (Parameter n) where
   elmType =
@@ -205,7 +203,7 @@ instance (KnownNat numParams, HasDatatypeInfo a, All2 HasElmType (Code a)) => De
 
       constructor :: forall xs v. All HasElmType xs => ConstructorInfo xs -> (Name.Constructor, [Type v])
       constructor (Constructor cname) = (fromString cname, constructorFields $ shape @_ @xs)
-      constructor (Infix _ _ _) = panic "Infix constructors are not supported"
+      constructor (Infix _ _ _) = error "Infix constructors are not supported"
       constructor (Record cname fs) = (fromString cname, [Type.Record $ recordFields fs])
 
       constructorFields :: All HasElmType xs => Shape xs -> [Type v]
@@ -319,7 +317,7 @@ instance (HasElmType a, KnownNat numParams, HasDatatypeInfo a, All2 (HasElmDecod
           (Type.Global tname, _) -> tname
 
           _ ->
-            panic "Can't automatically derive JSON decoder for an anonymous Elm type"
+            error "Can't automatically derive JSON decoder for an anonymous Elm type"
 
       constructors
         :: All2 (HasElmDecoder Aeson.Value) xss
@@ -336,7 +334,7 @@ instance (HasElmType a, KnownNat numParams, HasDatatypeInfo a, All2 (HasElmDecod
       constructor (Constructor cname) =
         (cname, constructorFields $ shape @_ @xs)
       constructor (Infix _ _ _) =
-        panic "Infix constructors are not supported"
+        error "Infix constructors are not supported"
       constructor (Record cname fs) =
         (cname, [decodeRecord fs $ explicitRecordConstructor $ recordFieldNames fs])
 
@@ -437,10 +435,10 @@ instance (HasElmType a, KnownNat numParams, HasDatatypeInfo a, All2 (HasElmDecod
         elmField fname : recordFieldNames fs
 
       constructorJSONName :: String -> Text
-      constructorJSONName = toS . Aeson.constructorTagModifier aesonOptions
+      constructorJSONName = fromString . Aeson.constructorTagModifier aesonOptions
 
       jsonFieldName :: String -> Expression v
-      jsonFieldName = Expression.String . toS . Aeson.fieldLabelModifier aesonOptions
+      jsonFieldName = Expression.String . fromString . Aeson.fieldLabelModifier aesonOptions
 
       elmField :: String -> Name.Field
       elmField = fromString . fieldLabelModifier options
@@ -451,12 +449,12 @@ instance (HasElmType a, KnownNat numParams, HasDatatypeInfo a, All2 (HasElmDecod
 
       decodeConstructor contentsName constr [constrField] =
         Expression.App "Json.Decode.succeed" constr Expression.|>
-          Expression.apps "Json.Decode.Pipeline.required" [Expression.String (toS contentsName), constrField]
+          Expression.apps "Json.Decode.Pipeline.required" [Expression.String (fromString contentsName), constrField]
 
       decodeConstructor contentsName constr constrFields =
         Expression.apps
           "Json.Decode.field"
-          [ Expression.String (toS contentsName)
+          [ Expression.String (fromString contentsName)
           , foldl'
             (Expression.|>)
             (Expression.App "Json.Decode.succeed" constr)
@@ -472,7 +470,7 @@ instance (HasElmType a, KnownNat numParams, HasDatatypeInfo a, All2 (HasElmDecod
         | not $ Aeson.tagSingleConstructors aesonOptions =
           let
             qualifiedConstr =
-              Expression.Global $ Name.Qualified moduleName_ $ toS constr
+              Expression.Global $ Name.Qualified moduleName_ $ fromString constr
           in
           case constrFields of
             [constrField] ->
@@ -498,7 +496,7 @@ instance (HasElmType a, KnownNat numParams, HasDatatypeInfo a, All2 (HasElmDecod
               | (constr, _) <- constrs
               , let
                   qualifiedConstr =
-                    Expression.Global $ Name.Qualified moduleName_ $ toS constr
+                    Expression.Global $ Name.Qualified moduleName_ $ fromString constr
               ]
               ++
               [ ( Pattern.Wildcard
@@ -510,7 +508,7 @@ instance (HasElmType a, KnownNat numParams, HasDatatypeInfo a, All2 (HasElmDecod
       decodeConstructors constrs =
         case Aeson.sumEncoding aesonOptions of
           Aeson.TaggedObject tagName contentsName ->
-            Expression.apps "Json.Decode.field" [Expression.String $ toS tagName, "Json.Decode.string"] Expression.|>
+            Expression.apps "Json.Decode.field" [Expression.String $ fromString tagName, "Json.Decode.string"] Expression.|>
               Expression.App "Json.Decode.andThen" (Expression.Lam
                 (Bound.toScope $ Expression.Case (pure $ Bound.B ()) $
                   [ ( Pattern.String $ constructorJSONName constr
@@ -519,7 +517,7 @@ instance (HasElmType a, KnownNat numParams, HasDatatypeInfo a, All2 (HasElmDecod
                 | (constr, fields) <- constrs
                 , let
                     qualifiedConstr =
-                      Expression.Global $ Name.Qualified moduleName_ $ toS constr
+                      Expression.Global $ Name.Qualified moduleName_ $ fromString constr
                 ]
                 ++
                 [ ( Pattern.Wildcard
@@ -528,7 +526,7 @@ instance (HasElmType a, KnownNat numParams, HasDatatypeInfo a, All2 (HasElmDecod
                 ]
               ))
 
-          _ -> panic "Only the DataAeson.TaggedObject sumEncoding is currently supported"
+          _ -> error "Only the DataAeson.TaggedObject sumEncoding is currently supported"
 
       allNullary :: forall c f. [(c, [f])] -> Bool
       allNullary = all (null . snd)
@@ -630,7 +628,7 @@ instance (HasElmType a, KnownNat numParams, HasDatatypeInfo a, All2 (HasElmEncod
           (Type.Global tname, _) -> tname
 
           _ ->
-            panic "Can't automatically derive JSON encoder for an anonymous Elm type"
+            error "Can't automatically derive JSON encoder for an anonymous Elm type"
 
       constructors
         :: All2 (HasElmEncoder Aeson.Value) xss
@@ -647,7 +645,7 @@ instance (HasElmType a, KnownNat numParams, HasDatatypeInfo a, All2 (HasElmEncod
       constructor (Constructor cname) =
         (cname, constructorFields $ shape @_ @xs)
       constructor Infix {} =
-        panic "Infix constructors are not supported"
+        error "Infix constructors are not supported"
       constructor (Record cname fs) =
         (cname, [Expression.Lam $ Bound.toScope $ encodeRecord fs (pure $ Bound.B ())])
 
@@ -744,10 +742,10 @@ instance (HasElmType a, KnownNat numParams, HasDatatypeInfo a, All2 (HasElmEncod
         Expression.App (elmEncoder @Aeson.Value @x)
 
       constructorJSONName :: String -> Text
-      constructorJSONName = toS . Aeson.constructorTagModifier aesonOptions
+      constructorJSONName = fromString . Aeson.constructorTagModifier aesonOptions
 
       jsonFieldName :: String -> Expression v
-      jsonFieldName = Expression.String . toS . Aeson.fieldLabelModifier aesonOptions
+      jsonFieldName = Expression.String . fromString . Aeson.fieldLabelModifier aesonOptions
 
       elmField :: String -> Name.Field
       elmField = fromString . fieldLabelModifier options
@@ -797,11 +795,11 @@ instance (HasElmType a, KnownNat numParams, HasDatatypeInfo a, All2 (HasElmEncod
                   Expression.App "Json.Encode.object" $
                   Expression.List $
                     Expression.tuple
-                      (Expression.String (toS tagName))
+                      (Expression.String (fromString tagName))
                       (Expression.App "Json.Encode.string" $ Expression.String $ constructorJSONName constr)
                     :
                     [ Expression.tuple
-                      (Expression.String (toS contentsName))
+                      (Expression.String (fromString contentsName))
                       (encodeConstructorFields constrFields)
                     | not $ null constrFields
                     ]
@@ -809,7 +807,7 @@ instance (HasElmType a, KnownNat numParams, HasDatatypeInfo a, All2 (HasElmEncod
               | (constr, constrFields) <- constrs
               ]
 
-          _ -> panic "Only the DataAeson.TaggedObject sumEncoding is currently supported"
+          _ -> error "Only the DataAeson.TaggedObject sumEncoding is currently supported"
 
       allNullary :: forall c f. [(c, [f])] -> Bool
       allNullary = all (null . snd)
