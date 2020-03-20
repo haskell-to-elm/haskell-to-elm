@@ -136,7 +136,7 @@ Since version 0.3.0.0, `haskell-to-elm` supports generating code for types with 
 
 For example, let's say we have the following Haskell type:
 
-```
+```haskell
 data Result e a
   = Err e
   | Ok a
@@ -146,7 +146,7 @@ data Result e a
 We can derive the corresponding Elm type and JSON encoders and decoder
 definitions with the following code:
 
-```
+```haskell
 instance HasElmType Result where
   elmDefinition =
     Just $ deriveElmTypeDefinition @Result defaultOptions "Api.Result.Result"
@@ -163,7 +163,7 @@ instance HasElmEncoder Aeson.Value Result where
 For parameterised types we also have to add instances for how to handle the
 type when it's fully applied to type arguments. Like this:
 
-```
+```haskell
 instance (HasElmType a, HasElmType b) => HasElmType (Result a b) where
   elmType =
     Type.apps (elmType @Result) [elmType @a, elmType @b]
