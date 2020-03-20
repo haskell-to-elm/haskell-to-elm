@@ -5,6 +5,7 @@ license:             BSD3
 author:              "Olle Fredriksson"
 maintainer:          "fredriksson.olle@gmail.com"
 copyright:           "2019 Olle Fredriksson"
+tested-with:         GHC == 8.4.3, GHC == 8.6.5, GHC == 8.8.3
 
 extra-source-files:
 - README.md
