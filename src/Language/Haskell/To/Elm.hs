@@ -18,15 +18,18 @@ module Language.Haskell.To.Elm where
 
 import qualified Bound
 import qualified Data.Aeson as Aeson
+import Data.Bifunctor (first, second)
 import Data.Foldable
 import Data.HashMap.Lazy (HashMap)
 import qualified Data.HashMap.Lazy as HashMap
 import qualified Data.Kind
 import Data.Maybe (catMaybes)
+import Data.Proxy
 import Data.String
 import Data.Text (Text)
 import Data.Time
-import Generics.SOP as SOP
+import Data.Void
+import qualified Generics.SOP as SOP
 import GHC.TypeLits
 
 import Language.Elm.Definition (Definition)
@@ -37,6 +40,7 @@ import qualified Language.Elm.Name as Name
 import qualified Language.Elm.Pattern as Pattern
 import Language.Elm.Type (Type)
 import qualified Language.Elm.Type as Type
+import Language.Haskell.To.Elm.DataShape
 
 -------------------------------------------------------------------------------
 -- * Classes
@@ -165,15 +169,19 @@ instance (DeriveParameterisedElmTypeDefinition (numParams + 1) (f (Parameter num
   deriveParameterisedElmTypeDefinition =
     deriveParameterisedElmTypeDefinition @(numParams + 1) @(f (Parameter numParams))
 
-instance (KnownNat numParams, HasDatatypeInfo a, All2 HasElmType (Code a)) => DeriveParameterisedElmTypeDefinition numParams (a :: Data.Kind.Type) where
+instance (KnownNat numParams, SOP.HasDatatypeInfo a, SOP.All2 HasElmType (SOP.Code a)) => DeriveParameterisedElmTypeDefinition numParams (a :: Data.Kind.Type) where
   deriveParameterisedElmTypeDefinition options name =
-    case constructorInfo $ datatypeInfo (Proxy @a) of
-      Record _cname fields :* Nil ->
-        Definition.Alias name numParams (bindTypeParameters $ Type.Record (recordFields fields))
+    case dataShape @a $ ConstraintFun constraintFun of
+      [(_cname, RecordConstructorShape fields)] ->
+        Definition.Alias name numParams (bindTypeParameters $ Type.Record $ first fieldName <$> fields)
 
       cs ->
-        Definition.Type name numParams (fmap (fmap bindTypeParameters) <$> constructors cs)
+        Definition.Type name numParams (fmap (fmap bindTypeParameters) <$> map (uncurry constructor) cs)
     where
+      constraintFun :: forall v t. Dict (HasElmType t) -> Type v
+      constraintFun Dict =
+        elmType @t
+
       typeParameterMap :: HashMap Name.Qualified Int
       typeParameterMap =
         HashMap.fromList [(parameterName i, i) | i <- [0..numParams - 1]]
@@ -190,29 +198,20 @@ instance (KnownNat numParams, HasDatatypeInfo a, All2 HasElmType (Code a)) => De
       numParams =
         fromIntegral $ natVal $ Proxy @numParams
 
-      recordFields :: All HasElmType xs => NP FieldInfo xs -> [(Name.Field, Type v)]
-      recordFields Nil = []
-      recordFields (f :* fs) = field f : recordFields fs
+      constructor :: String -> ConstructorShape (Type v) -> (Name.Constructor, [Type v])
+      constructor cname shape =
+        ( fromString cname
+        , case shape of
+          ConstructorShape fields ->
+            fields
 
-      field :: forall x v. HasElmType x => FieldInfo x -> (Name.Field, Type v)
-      field (FieldInfo fname) =
-        (fromString $ fieldLabelModifier options fname, elmType @x)
+          RecordConstructorShape fs ->
+            [Type.Record $ first fieldName <$> fs]
+        )
 
-      constructors :: All2 HasElmType xss => NP ConstructorInfo xss -> [(Name.Constructor, [Type v])]
-      constructors Nil = []
-      constructors (c :* cs) = constructor c : constructors cs
-
-      constructor :: forall xs v. All HasElmType xs => ConstructorInfo xs -> (Name.Constructor, [Type v])
-      constructor (Constructor cname) = (fromString cname, constructorFields $ shape @_ @xs)
-      constructor (Infix _ _ _) = error "Infix constructors are not supported"
-      constructor (Record cname fs) = (fromString cname, [Type.Record $ recordFields fs])
-
-      constructorFields :: All HasElmType xs => Shape xs -> [Type v]
-      constructorFields ShapeNil = []
-      constructorFields s@(ShapeCons _) = go s
-        where
-          go :: forall x xs v. (HasElmType x, All HasElmType xs) => Shape (x ': xs) -> [Type v]
-          go (ShapeCons s') = elmType @x : constructorFields s'
+      fieldName :: String -> Name.Field
+      fieldName =
+        fromString . fieldLabelModifier options
 
 -- ** JSON decoders
 
@@ -251,14 +250,14 @@ instance (DeriveParameterisedElmDecoderDefinition (numParams + 1) value (f (Para
   deriveParameterisedElmDecoderDefinition =
     deriveParameterisedElmDecoderDefinition @(numParams + 1) @value @(f (Parameter numParams))
 
-instance (HasElmType a, KnownNat numParams, HasDatatypeInfo a, All2 (HasElmDecoder Aeson.Value) (Code a))
+instance (HasElmType a, KnownNat numParams, SOP.HasDatatypeInfo a, SOP.All2 (HasElmDecoder Aeson.Value) (SOP.Code a))
   => DeriveParameterisedElmDecoderDefinition numParams Aeson.Value (a :: Data.Kind.Type) where
   deriveParameterisedElmDecoderDefinition options aesonOptions decoderName =
     Definition.Constant decoderName numParams parameterisedType $
       parameteriseBody $
-        case constructorInfo $ datatypeInfo (Proxy @a) of
-          Record _cname fields :* Nil ->
-            decodeRecord fields $
+        case dataShape @a $ ConstraintFun constraintFun of
+          [(_cname, RecordConstructorShape fields)] ->
+            decodeRecordFields fields $
             Expression.App "Json.Decode.succeed" $
             case Type.appsView (elmType @a) of
               (Type.Record fieldTypes, _) ->
@@ -268,8 +267,12 @@ instance (HasElmType a, KnownNat numParams, HasDatatypeInfo a, All2 (HasElmDecod
                 Expression.Global typeName
 
           cs ->
-            decodeConstructors $ constructors cs
+            decodeConstructors cs
     where
+      constraintFun :: forall v t. Dict (HasElmDecoder Aeson.Value t) -> (Type Void, Expression v)
+      constraintFun Dict =
+        (elmType @t, elmDecoder @Aeson.Value @t)
+
       numParams =
         fromIntegral $ natVal $ Proxy @numParams
 
@@ -286,9 +289,7 @@ instance (HasElmType a, KnownNat numParams, HasDatatypeInfo a, All2 (HasElmDecod
       typeParameterMap =
         HashMap.fromList [(parameterName i, i) | i <- [0..numParams - 1]]
 
-      bindTypeParameters
-        :: Type v
-        -> Type (Bound.Var Int v)
+      bindTypeParameters :: Type v -> Type (Bound.Var Int v)
       bindTypeParameters =
         Type.bind
           (\n -> maybe (Type.Global n) (pure . Bound.B) (HashMap.lookup n typeParameterMap))
@@ -320,42 +321,7 @@ instance (HasElmType a, KnownNat numParams, HasDatatypeInfo a, All2 (HasElmDecod
           _ ->
             error "Can't automatically derive JSON decoder for an anonymous Elm type"
 
-      constructors
-        :: All2 (HasElmDecoder Aeson.Value) xss
-        => NP ConstructorInfo xss
-        -> [(String, [Expression v])]
-      constructors Nil = []
-      constructors (c :* cs) = constructor c : constructors cs
-
-      constructor
-        :: forall xs v
-        . All (HasElmDecoder Aeson.Value) xs
-        => ConstructorInfo xs
-        -> (String, [Expression v])
-      constructor (Constructor cname) =
-        (cname, constructorFields $ shape @_ @xs)
-      constructor (Infix _ _ _) =
-        error "Infix constructors are not supported"
-      constructor (Record cname fs) =
-        (cname, [decodeRecord fs $ explicitRecordConstructor $ recordFieldNames fs])
-
-      constructorFields
-        :: All (HasElmDecoder Aeson.Value) xs
-        => Shape xs
-        -> [Expression v]
-      constructorFields ShapeNil = []
-      constructorFields s@(ShapeCons _) = go s
-        where
-          go
-            :: forall x xs v
-            . (HasElmDecoder Aeson.Value x, All (HasElmDecoder Aeson.Value) xs)
-            => Shape (x ': xs)
-            -> [Expression v]
-          go (ShapeCons s') = elmDecoder @Aeson.Value @x : constructorFields s'
-
-      explicitRecordConstructor
-        :: [Name.Field]
-        -> Expression v
+      explicitRecordConstructor :: [Name.Field] -> Expression v
       explicitRecordConstructor names =
         go mempty names
         where
@@ -368,72 +334,30 @@ instance (HasElmType a, KnownNat numParams, HasDatatypeInfo a, All2 (HasElmDecod
               fname:fnames' ->
                 Expression.Lam $ Bound.toScope $ go (HashMap.insert fname (Bound.B ()) $ Bound.F <$> locals) fnames'
 
-      decodeRecord
-        :: All (HasElmDecoder Aeson.Value) xs
-        => NP FieldInfo xs
-        -> Expression v
-        -> Expression v
-      decodeRecord (f :* Nil)
+      decodeRecordFields :: [(String, (Type Void, Expression v))] -> Expression v -> Expression v
+      decodeRecordFields [(_, (_, decoder))] e
         | Aeson.unwrapUnaryRecords aesonOptions =
-          unwrappedRecordField f
-      decodeRecord fs =
-        recordFields fs
+          e Expression.|> decoder
+      decodeRecordFields fs e =
+        foldl' (Expression.|>) e $ decodeRecordField <$> fs
 
-      recordFields
-        :: All (HasElmDecoder Aeson.Value) xs
-        => NP FieldInfo xs
-        -> Expression v
-        -> Expression v
-      recordFields Nil e = e
-      recordFields (f :* fs) e =
-        recordFields fs $ recordField f e
-
-      isMaybe :: forall t. HasElmType t => Bool
-      isMaybe =
-        case Type.appsView $ elmType @t of
-          (Type.Global "Maybe.Maybe", _) -> True
-          _ -> False
-
-      recordField
-        :: forall x v
-        . HasElmDecoder Aeson.Value x
-        => FieldInfo x
-        -> Expression v
-        -> Expression v
-      recordField (FieldInfo fname) e
-        | Aeson.omitNothingFields aesonOptions && isMaybe @x =
-          e Expression.|>
-            Expression.apps
-              "Json.Decode.Pipeline.optional"
-              [ jsonFieldName fname
-              , elmDecoder @Aeson.Value @x
-              , "Maybe.Nothing"
-              ]
+      decodeRecordField :: (String, (Type Void, Expression v)) -> Expression v
+      decodeRecordField (fname, (type_, decoder))
+        | Aeson.omitNothingFields aesonOptions
+        , (Type.Global "Maybe.Maybe", _) <- Type.appsView type_ =
+          Expression.apps
+            "Json.Decode.Pipeline.optional"
+            [ jsonFieldName fname
+            , decoder
+            , "Maybe.Nothing"
+            ]
 
         | otherwise =
-          e Expression.|>
-            Expression.apps
-              "Json.Decode.Pipeline.required"
-              [ jsonFieldName fname
-              , elmDecoder @Aeson.Value @x
-              ]
-
-      unwrappedRecordField
-        :: forall x v
-        . HasElmDecoder Aeson.Value x
-        => FieldInfo x
-        -> Expression v
-        -> Expression v
-      unwrappedRecordField (FieldInfo _) e =
-        e Expression.|> elmDecoder @Aeson.Value @x
-
-      recordFieldNames
-        :: All (HasElmDecoder Aeson.Value) xs
-        => NP FieldInfo xs
-        -> [Name.Field]
-      recordFieldNames Nil = []
-      recordFieldNames (FieldInfo fname :* fs) =
-        elmField fname : recordFieldNames fs
+          Expression.apps
+            "Json.Decode.Pipeline.required"
+            [ jsonFieldName fname
+            , decoder
+            ]
 
       constructorJSONName :: String -> Text
       constructorJSONName = fromString . Aeson.constructorTagModifier aesonOptions
@@ -444,15 +368,15 @@ instance (HasElmType a, KnownNat numParams, HasDatatypeInfo a, All2 (HasElmDecod
       elmField :: String -> Name.Field
       elmField = fromString . fieldLabelModifier options
 
-      decodeConstructor :: String -> Expression v -> [Expression v] -> Expression v
-      decodeConstructor _ constr [] =
+      decodeConstructor :: String -> Expression v -> ConstructorShape (Type Void, Expression v) -> Expression v
+      decodeConstructor _ constr (ConstructorShape []) =
         Expression.App "Json.Decode.succeed" constr
 
-      decodeConstructor contentsName constr [constrField] =
+      decodeConstructor contentsName constr (ConstructorShape [(_, fieldDecoder)]) =
         Expression.App "Json.Decode.succeed" constr Expression.|>
-          Expression.apps "Json.Decode.Pipeline.required" [Expression.String (fromString contentsName), constrField]
+          Expression.apps "Json.Decode.Pipeline.required" [Expression.String (fromString contentsName), fieldDecoder]
 
-      decodeConstructor contentsName constr constrFields =
+      decodeConstructor contentsName constr (ConstructorShape fields) =
         Expression.apps
           "Json.Decode.field"
           [ Expression.String (fromString contentsName)
@@ -461,34 +385,50 @@ instance (HasElmType a, KnownNat numParams, HasDatatypeInfo a, All2 (HasElmDecod
             (Expression.App "Json.Decode.succeed" constr)
             [ Expression.App
               "Json.Decode.Pipeline.custom"
-              (Expression.apps "Json.Decode.index" [Expression.Int index, field])
-            | (index, field) <- zip [0..] constrFields
+              (Expression.apps "Json.Decode.index" [Expression.Int index, fieldDecoder])
+            | (index, (_, fieldDecoder)) <- zip [0..] fields
             ]
           ]
 
-      decodeConstructors :: [(String, [Expression v])] -> Expression v
-      decodeConstructors [(constr, constrFields)]
+      decodeConstructor _contentsName constr (RecordConstructorShape fields) =
+        Expression.apps "Json.Decode.map"
+          [ constr
+          , decodeRecordFields fields $
+            Expression.App "Json.Decode.succeed" $
+              explicitRecordConstructor $ elmField . fst <$> fields
+          ]
+
+      decodeConstructors :: [(String, ConstructorShape (Type Void, Expression v))] -> Expression v
+      decodeConstructors [(constr, constrShape)]
         | not $ Aeson.tagSingleConstructors aesonOptions =
           let
             qualifiedConstr =
               Expression.Global $ Name.Qualified moduleName_ $ fromString constr
           in
-          case constrFields of
-            [constrField] ->
-              Expression.apps "Json.Decode.map" [qualifiedConstr, constrField]
+          case constrShape of
+            ConstructorShape [(_, fieldDecoder)] ->
+              Expression.apps "Json.Decode.map" [qualifiedConstr, fieldDecoder]
 
-            _ ->
+            ConstructorShape fields ->
               foldl'
                 (Expression.|>)
                 (Expression.App "Json.Decode.succeed" qualifiedConstr)
                 [Expression.App
                   "Json.Decode.Pipeline.custom"
-                  (Expression.apps "Json.Decode.index" [Expression.Int index, field])
-                | (index, field) <- zip [0..] constrFields
+                  (Expression.apps "Json.Decode.index" [Expression.Int index, fieldDecoder])
+                | (index, (_, fieldDecoder)) <- zip [0..] fields
+                ]
+
+            RecordConstructorShape fields ->
+              Expression.apps "Json.Decode.map"
+                [ qualifiedConstr
+                , decodeRecordFields fields $
+                  Expression.App "Json.Decode.succeed" $
+                    explicitRecordConstructor $ elmField . fst <$> fields
                 ]
 
       decodeConstructors constrs
-        | Aeson.allNullaryToStringTag aesonOptions && allNullary constrs =
+        | Aeson.allNullaryToStringTag aesonOptions && all (nullary . snd) constrs =
           "Json.Decode.string" Expression.|> Expression.App "Json.Decode.andThen" (Expression.Lam
             (Bound.toScope $ Expression.Case (pure $ Bound.B ()) $
               [ ( Pattern.String $ constructorJSONName constr
@@ -513,9 +453,11 @@ instance (HasElmType a, KnownNat numParams, HasDatatypeInfo a, All2 (HasElmDecod
               Expression.App "Json.Decode.andThen" (Expression.Lam
                 (Bound.toScope $ Expression.Case (pure $ Bound.B ()) $
                   [ ( Pattern.String $ constructorJSONName constr
-                    , Bound.toScope $ decodeConstructor contentsName qualifiedConstr (fmap (Bound.F . Bound.F) <$> fields)
+                    , Bound.toScope $
+                      decodeConstructor contentsName qualifiedConstr $
+                      second (fmap $ Bound.F . Bound.F) <$> shape
                     )
-                | (constr, fields) <- constrs
+                | (constr, shape) <- constrs
                 , let
                     qualifiedConstr =
                       Expression.Global $ Name.Qualified moduleName_ $ fromString constr
@@ -528,9 +470,6 @@ instance (HasElmType a, KnownNat numParams, HasDatatypeInfo a, All2 (HasElmDecod
               ))
 
           _ -> error "Only the DataAeson.TaggedObject sumEncoding is currently supported"
-
-      allNullary :: forall c f. [(c, [f])] -> Bool
-      allNullary = all (null . snd)
 
 -- ** JSON encoders
 
@@ -568,19 +507,24 @@ instance (DeriveParameterisedElmEncoderDefinition (numParams + 1) value (f (Para
   deriveParameterisedElmEncoderDefinition =
     deriveParameterisedElmEncoderDefinition @(numParams + 1) @value @(f (Parameter numParams))
 
-instance (HasElmType a, KnownNat numParams, HasDatatypeInfo a, All2 (HasElmEncoder Aeson.Value) (Code a))
+instance (HasElmType a, KnownNat numParams, SOP.HasDatatypeInfo a, SOP.All2 (HasElmEncoder Aeson.Value) (SOP.Code a))
   => DeriveParameterisedElmEncoderDefinition numParams Aeson.Value (a :: Data.Kind.Type) where
   deriveParameterisedElmEncoderDefinition options aesonOptions encoderName =
     Definition.Constant encoderName numParams parameterisedType $
       parameteriseBody $
         Expression.Lam $ Bound.toScope $
-          case constructorInfo $ datatypeInfo (Proxy @a) of
-            Record _cname fields :* Nil ->
-              encodeRecord fields $ pure $ Bound.B ()
+          case dataShape @a $ ConstraintFun constraintFun of
+            [(_cname, RecordConstructorShape fields)] ->
+              Expression.App "Json.Encode.object" $
+              encodedRecordFieldList fields $ pure $ Bound.B ()
 
             cs ->
-              encodeConstructors (constructors cs) (pure $ Bound.B ())
+              encodeConstructors cs (pure $ Bound.B ())
     where
+      constraintFun :: forall v t. Dict (HasElmEncoder Aeson.Value t) -> (Type Void, Expression v)
+      constraintFun Dict =
+        (elmType @t, elmEncoder @Aeson.Value @t)
+
       numParams =
         fromIntegral $ natVal $ Proxy @numParams
 
@@ -597,9 +541,7 @@ instance (HasElmType a, KnownNat numParams, HasDatatypeInfo a, All2 (HasElmEncod
       typeParameterMap =
         HashMap.fromList [(parameterName i, i) | i <- [0..numParams - 1]]
 
-      bindTypeParameters
-        :: Type v
-        -> Type (Bound.Var Int v)
+      bindTypeParameters :: Type v -> Type (Bound.Var Int v)
       bindTypeParameters =
         Type.bind
           (\n -> maybe (Type.Global n) (pure . Bound.B) (HashMap.lookup n typeParameterMap))
@@ -631,85 +573,31 @@ instance (HasElmType a, KnownNat numParams, HasDatatypeInfo a, All2 (HasElmEncod
           _ ->
             error "Can't automatically derive JSON encoder for an anonymous Elm type"
 
-      constructors
-        :: All2 (HasElmEncoder Aeson.Value) xss
-        => NP ConstructorInfo xss
-        -> [(String, [Expression v])]
-      constructors Nil = []
-      constructors (c :* cs) = constructor c : constructors cs
-
-      constructor
-        :: forall xs v
-        . All (HasElmEncoder Aeson.Value) xs
-        => ConstructorInfo xs
-        -> (String, [Expression v])
-      constructor (Constructor cname) =
-        (cname, constructorFields $ shape @_ @xs)
-      constructor Infix {} =
-        error "Infix constructors are not supported"
-      constructor (Record cname fs) =
-        (cname, [Expression.Lam $ Bound.toScope $ encodeRecord fs (pure $ Bound.B ())])
-
-      constructorFields
-        :: All (HasElmEncoder Aeson.Value) xs
-        => Shape xs
-        -> [Expression v]
-      constructorFields ShapeNil = []
-      constructorFields s@(ShapeCons _) = go s
-        where
-          go
-            :: forall x xs v
-            . (HasElmEncoder Aeson.Value x, All (HasElmEncoder Aeson.Value) xs)
-            => Shape (x ': xs)
-            -> [Expression v]
-          go (ShapeCons s') = elmEncoder @Aeson.Value @x : constructorFields s'
-
-      encodeRecord
-        :: All (HasElmEncoder Aeson.Value) xs
-        => NP FieldInfo xs
-        -> Expression v
-        -> Expression v
-      encodeRecord (f :* Nil) e
+      encodedRecordFieldList :: [(String, (Type Void, Expression v))] -> Expression v -> Expression v
+      encodedRecordFieldList [(_, (_, encoder))] e
         | Aeson.unwrapUnaryRecords aesonOptions =
-          unwrappedRecordField f e
-      encodeRecord fs e =
-        Expression.App "Json.Encode.object" $
-          case recordFields fs e of
-            (nonNullable, []) ->
-              Expression.List nonNullable
+          Expression.App encoder e
+      encodedRecordFieldList fs e =
+        case foldMap (recordField e) fs of
+          (nonNullable, []) ->
+            Expression.List nonNullable
 
-            ([], nullable) ->
-              Expression.App "List.concat" $ Expression.List nullable
+          ([], nullable) ->
+            Expression.App "List.concat" $ Expression.List nullable
 
-            (nonNullable, nullable) ->
-              Expression.apps "Basics.++"
-                [ Expression.List nonNullable
-                , Expression.App "List.concat" $ Expression.List nullable
-                ]
-
-      recordFields
-        :: All (HasElmEncoder Aeson.Value) xs
-        => NP FieldInfo xs
-        -> Expression v
-        -> ([Expression v], [Expression v])
-      recordFields Nil _ = mempty
-      recordFields (f :* fs) e =
-        recordField f e <> recordFields fs e
-
-      isMaybe :: forall t. HasElmType t => Bool
-      isMaybe =
-        case Type.appsView $ elmType @t of
-          (Type.Global "Maybe.Maybe", _) -> True
-          _ -> False
+          (nonNullable, nullable) ->
+            Expression.apps "Basics.++"
+              [ Expression.List nonNullable
+              , Expression.App "List.concat" $ Expression.List nullable
+              ]
 
       recordField
-        :: forall x v
-        . HasElmEncoder Aeson.Value x
-        => FieldInfo x
-        -> Expression v
+        :: Expression v
+        -> (String, (Type Void, Expression v))
         -> ([Expression v], [Expression v])
-      recordField (FieldInfo fname) e
-        | Aeson.omitNothingFields aesonOptions && isMaybe @x =
+      recordField e (fname, (type_, encoder))
+        | Aeson.omitNothingFields aesonOptions
+        , (Type.Global "Maybe.Maybe", _) <- Type.appsView type_ =
           ( []
           , [ Expression.Case (Expression.App (Expression.Proj $ elmField fname) e)
               [ ( Pattern.Con "Maybe.Nothing" []
@@ -717,9 +605,10 @@ instance (HasElmType a, KnownNat numParams, HasDatatypeInfo a, All2 (HasElmEncod
                 )
               , ( Pattern.Con "Maybe.Just" [Pattern.Var 0]
                 , Bound.toScope $
-                  Expression.App
-                    (elmEncoder @Aeson.Value @x)
-                    (Expression.App (Expression.Proj $ elmField fname) (Bound.F <$> e))
+                  fmap Bound.F $
+                  Expression.tuple
+                    (jsonFieldName fname)
+                    (Expression.App encoder (Expression.App (Expression.Proj $ elmField fname) e))
                 )
               ]
             ]
@@ -728,19 +617,10 @@ instance (HasElmType a, KnownNat numParams, HasDatatypeInfo a, All2 (HasElmEncod
         | otherwise =
           ( [ Expression.tuple
               (jsonFieldName fname)
-              (Expression.App (elmEncoder @Aeson.Value @x) (Expression.App (Expression.Proj $ elmField fname) e))
+              (Expression.App encoder (Expression.App (Expression.Proj $ elmField fname) e))
             ]
           , []
           )
-
-      unwrappedRecordField
-        :: forall x v
-        . HasElmEncoder Aeson.Value x
-        => FieldInfo x
-        -> Expression v
-        -> Expression v
-      unwrappedRecordField (FieldInfo _) =
-        Expression.App (elmEncoder @Aeson.Value @x)
 
       constructorJSONName :: String -> Text
       constructorJSONName = fromString . Aeson.constructorTagModifier aesonOptions
@@ -754,31 +634,40 @@ instance (HasElmType a, KnownNat numParams, HasDatatypeInfo a, All2 (HasElmEncod
       elmConstr :: String -> Name.Qualified
       elmConstr = Name.Qualified moduleName_ . fromString
 
-      encodeConstructorFields :: [Expression v] -> Expression (Bound.Var Int v)
-      encodeConstructorFields [constrField] =
-        Expression.App (Bound.F <$> constrField) (pure $ Bound.B 0)
+      encodeConstructorFields :: [(Type Void, Expression v)] -> Expression (Bound.Var Int v)
+      encodeConstructorFields [(_, encoder)] =
+        Expression.App (Bound.F <$> encoder) (pure $ Bound.B 0)
 
       encodeConstructorFields constrFields =
         Expression.apps
           "Json.Encode.list"
           [ "Basics.identity"
           , Expression.List
-            [ Expression.App (Bound.F <$> field) (pure $ Bound.B index)
-            | (index, field) <- zip [0..] constrFields
+            [ Expression.App (Bound.F <$> encoder) (pure $ Bound.B index)
+            | (index, (_, encoder)) <- zip [0..] constrFields
             ]
           ]
 
-      encodeConstructors :: [(String, [Expression v])] -> Expression v -> Expression v
-      encodeConstructors [(constr, constrFields)] expr
+      encodeConstructors :: [(String, ConstructorShape (Type Void, Expression v))] -> Expression v -> Expression v
+      encodeConstructors [(constr, constrShape)] expr
         | not $ Aeson.tagSingleConstructors aesonOptions =
           Expression.Case expr
-            [ ( Pattern.Con (elmConstr constr) (Pattern.Var . fst <$> zip [0..] constrFields)
-              , Bound.toScope $ encodeConstructorFields constrFields
-              )
+            [ case constrShape of
+                ConstructorShape constrFields ->
+                  ( Pattern.Con (elmConstr constr) (Pattern.Var . fst <$> zip [0..] constrFields)
+                  , Bound.toScope $ encodeConstructorFields constrFields
+                  )
+
+                RecordConstructorShape recordFields ->
+                  ( Pattern.Con (elmConstr constr) [Pattern.Var 0]
+                  , Bound.toScope $
+                    Expression.App "Json.Encode.object" $
+                    encodedRecordFieldList (second (second $ fmap Bound.F) <$> recordFields) $ pure $ Bound.B 0
+                  )
             ]
 
       encodeConstructors constrs expr
-        | Aeson.allNullaryToStringTag aesonOptions && allNullary constrs =
+        | Aeson.allNullaryToStringTag aesonOptions && all (nullary . snd) constrs =
           Expression.Case expr
             [ ( Pattern.Con (elmConstr constr) []
               , Bound.toScope $
@@ -791,27 +680,35 @@ instance (HasElmType a, KnownNat numParams, HasDatatypeInfo a, All2 (HasElmEncod
         case Aeson.sumEncoding aesonOptions of
           Aeson.TaggedObject tagName contentsName ->
             Expression.Case expr
-              [ ( Pattern.Con (elmConstr constr) (Pattern.Var . fst <$> zip [0..] constrFields)
-                , Bound.toScope $
-                  Expression.App "Json.Encode.object" $
-                  Expression.List $
-                    Expression.tuple
-                      (Expression.String (fromString tagName))
-                      (Expression.App "Json.Encode.string" $ Expression.String $ constructorJSONName constr)
-                    :
-                    [ Expression.tuple
-                      (Expression.String (fromString contentsName))
-                      (encodeConstructorFields constrFields)
-                    | not $ null constrFields
-                    ]
-                )
-              | (constr, constrFields) <- constrs
+              [ case constrShape of
+                  ConstructorShape constrFields ->
+                    ( Pattern.Con (elmConstr constr) (Pattern.Var . fst <$> zip [0..] constrFields)
+                    , Bound.toScope $
+                      Expression.App "Json.Encode.object" $
+                      Expression.List $
+                        tagTuple :
+                        [ Expression.tuple
+                          (Expression.String (fromString contentsName))
+                          (encodeConstructorFields constrFields)
+                        | not $ null constrFields
+                        ]
+                    )
+                  RecordConstructorShape recordFields ->
+                    ( Pattern.Con (elmConstr constr) [Pattern.Var 0]
+                    , Bound.toScope $
+                      Expression.App "Json.Encode.object" $
+                        Expression.List [tagTuple] Expression.++
+                        encodedRecordFieldList (second (second $ fmap Bound.F) <$> recordFields) (pure $ Bound.B 0)
+                    )
+              | (constr, constrShape) <- constrs
+              , let
+                tagTuple =
+                  Expression.tuple
+                    (Expression.String (fromString tagName))
+                    (Expression.App "Json.Encode.string" $ Expression.String $ constructorJSONName constr)
               ]
 
           _ -> error "Only the DataAeson.TaggedObject sumEncoding is currently supported"
-
-      allNullary :: forall c f. [(c, [f])] -> Bool
-      allNullary = all (null . snd)
 
 -------------
 

@@ -44,6 +44,7 @@ ghc-options:
 
 library:
   source-dirs: src
+  other-modules: Language.Haskell.To.Elm.DataShape
 
 tests:
   haskell-to-elm-test:

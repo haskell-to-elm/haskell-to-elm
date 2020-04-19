@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 9e59ffab4bdc032dd26d95e1ed709e107c6cc2ecac032d51ab4d8bac15ede294
+-- hash: ec0451c54bd9e4022ac0332a2a031a869d05f5e460b1156c3a7fc3a2d8b1b715
 
 name:           haskell-to-elm
 version:        0.3.0.0
@@ -37,7 +37,7 @@ library
   exposed-modules:
       Language.Haskell.To.Elm
   other-modules:
-      Paths_haskell_to_elm
+      Language.Haskell.To.Elm.DataShape
   hs-source-dirs:
       src
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -Wtabs -funbox-strict-fields
