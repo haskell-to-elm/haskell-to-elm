@@ -233,7 +233,7 @@ See [this file](examples/Parameterised.hs) for the full code with imports.
 ## Roadmap
 
 - [x] Derive JSON encoders and generically
-  - [ ] Support all Aeson options
+  - [ ] Support all Aeson options ([issue here](https://github.com/folq/haskell-to-elm/issues/10))
 - [x] Pretty-print the Elm AST
   - [x] Separate pretty printing from code generation: [elm-syntax](https://github.com/folq/elm-syntax)
 - [x] Generate Elm modules
