@@ -81,3 +81,12 @@ executables:
     when:
       condition: "!flag(examples)"
       buildable: false
+
+  deriving-via-example:
+    source-dirs: examples
+    main: DerivingVia.hs
+    dependencies:
+      - haskell-to-elm
+    when:
+      condition: "!flag(examples)"
+      buildable: false

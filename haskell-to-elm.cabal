@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.31.2.
+-- This file has been generated from package.yaml by hpack version 0.33.0.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: ec0451c54bd9e4022ac0332a2a031a869d05f5e460b1156c3a7fc3a2d8b1b715
+-- hash: 9de5cc59a141020f09bd2474ebf86dcfabffbe221010c39997b5f19ba6dba1d9
 
 name:           haskell-to-elm
 version:        0.3.0.0
@@ -52,9 +52,33 @@ library
     , unordered-containers >=0.2.8
   default-language: Haskell2010
 
+executable deriving-via-example
+  main-is: DerivingVia.hs
+  other-modules:
+      Parameterised
+      User
+      Paths_haskell_to_elm
+  hs-source-dirs:
+      examples
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -Wtabs -funbox-strict-fields
+  build-depends:
+      aeson >=1.4.0
+    , base >=4.7 && <5
+    , bound >=2.0.0
+    , elm-syntax >=0.3.0 && <0.3.1
+    , generics-sop >=0.4.0 && <0.6.0
+    , haskell-to-elm
+    , text >=1.2.0
+    , time >=1.8.0
+    , unordered-containers >=0.2.8
+  if !flag(examples)
+    buildable: False
+  default-language: Haskell2010
+
 executable parameterised-example
   main-is: Parameterised.hs
   other-modules:
+      DerivingVia
       User
       Paths_haskell_to_elm
   hs-source-dirs:
@@ -77,6 +101,7 @@ executable parameterised-example
 executable user-example
   main-is: User.hs
   other-modules:
+      DerivingVia
       Parameterised
       Paths_haskell_to_elm
   hs-source-dirs:

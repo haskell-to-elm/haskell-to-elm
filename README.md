@@ -230,6 +230,29 @@ and decoder for the type arguments.
 
 See [this file](examples/Parameterised.hs) for the full code with imports.
 
+## Using `DerivingVia` to reduce boilerplate
+
+We can use the `DerivingVia` extension to reduce some of the boilerplate that
+this library requires. This requires GHC version >= 8.8, because earlier
+versions had a bug that prevented it to work.
+
+In [this file](examples/DerivingVia.hs) we define a type called `ElmType` that
+we derive both the `haskell-to-elm` and Aeson classes through.
+
+After having defined that type, the code for `User` is simply:
+
+```haskell
+data User = User
+  { _name :: Text
+  , _age :: Int
+  } deriving (Generic, SOP.Generic, SOP.HasDatatypeInfo)
+    deriving (Aeson.ToJSON, Aeson.FromJSON, HasElmType, HasElmDecoder Aeson.Value, HasElmEncoder Aeson.Value) via ElmType "Api.User.User" User
+```
+
+This also means that we can ensure that we pass the same Aeson options to this library's
+Elm code generation functions and Aeson's JSON derivation functions, meaning that we don't
+risk mismatched JSON formats.
+
 ## Roadmap
 
 - [x] Derive JSON encoders and generically
