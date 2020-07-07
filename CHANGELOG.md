@@ -2,6 +2,8 @@
 
 ## Unreleased changes
 
+## 0.3.1.0
+
 - Generate correct JSON coders for record constructors for types with multiple constructors (https://github.com/folq/haskell-to-elm/issues/7)
 
 ## 0.3.0.0
