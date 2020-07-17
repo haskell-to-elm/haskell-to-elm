@@ -1,6 +1,7 @@
 {-# language AllowAmbiguousTypes #-}
 {-# language DataKinds #-}
 {-# language DefaultSignatures #-}
+{-# language DerivingVia #-}
 {-# language DuplicateRecordFields #-}
 {-# language FlexibleContexts #-}
 {-# language FlexibleInstances #-}
@@ -11,6 +12,7 @@
 {-# language PartialTypeSignatures #-}
 {-# language PolyKinds #-}
 {-# language ScopedTypeVariables #-}
+{-# language StandaloneDeriving #-}
 {-# language TypeApplications #-}
 {-# language TypeOperators #-}
 {-# language UndecidableInstances #-}
@@ -22,6 +24,7 @@ import Data.Bifunctor (first, second)
 import Data.Foldable
 import Data.HashMap.Lazy (HashMap)
 import qualified Data.HashMap.Lazy as HashMap
+import qualified Data.Int as Int
 import qualified Data.Kind
 import Data.Maybe (catMaybes)
 import Data.Proxy
@@ -30,6 +33,7 @@ import Data.Text (Text)
 import Data.Time
 import Data.Vector (Vector)
 import Data.Void
+import qualified Data.Word as Word
 import qualified Generics.SOP as SOP
 import GHC.TypeLits
 
@@ -725,6 +729,46 @@ instance HasElmDecoder Aeson.Value Int where
   elmDecoder =
     "Json.Decode.int"
 
+deriving via Int instance HasElmType Int.Int8
+deriving via Int instance HasElmEncoder Aeson.Value Int.Int8
+deriving via Int instance HasElmDecoder Aeson.Value Int.Int8
+deriving via Int instance HasElmEncoder Text Int.Int8
+
+deriving via Int instance HasElmType Int.Int16
+deriving via Int instance HasElmEncoder Aeson.Value Int.Int16
+deriving via Int instance HasElmDecoder Aeson.Value Int.Int16
+deriving via Int instance HasElmEncoder Text Int.Int16
+
+deriving via Int instance HasElmType Int.Int32
+deriving via Int instance HasElmEncoder Aeson.Value Int.Int32
+deriving via Int instance HasElmDecoder Aeson.Value Int.Int32
+deriving via Int instance HasElmEncoder Text Int.Int32
+
+deriving via Int instance HasElmType Int.Int64
+deriving via Int instance HasElmEncoder Aeson.Value Int.Int64
+deriving via Int instance HasElmDecoder Aeson.Value Int.Int64
+deriving via Int instance HasElmEncoder Text Int.Int64
+
+deriving via Int instance HasElmType Word.Word8
+deriving via Int instance HasElmEncoder Aeson.Value Word.Word8
+deriving via Int instance HasElmDecoder Aeson.Value Word.Word8
+deriving via Int instance HasElmEncoder Text Word.Word8
+
+deriving via Int instance HasElmType Word.Word16
+deriving via Int instance HasElmEncoder Aeson.Value Word.Word16
+deriving via Int instance HasElmDecoder Aeson.Value Word.Word16
+deriving via Int instance HasElmEncoder Text Word.Word16
+
+deriving via Int instance HasElmType Word.Word32
+deriving via Int instance HasElmEncoder Aeson.Value Word.Word32
+deriving via Int instance HasElmDecoder Aeson.Value Word.Word32
+deriving via Int instance HasElmEncoder Text Word.Word32
+
+deriving via Int instance HasElmType Word.Word64
+deriving via Int instance HasElmEncoder Aeson.Value Word.Word64
+deriving via Int instance HasElmDecoder Aeson.Value Word.Word64
+deriving via Int instance HasElmEncoder Text Word.Word64
+
 instance HasElmType Double where
   elmType =
     "Basics.Float"
@@ -736,6 +780,11 @@ instance HasElmEncoder Aeson.Value Double where
 instance HasElmDecoder Aeson.Value Double where
   elmDecoder =
     "Json.Decode.float"
+
+deriving via Double instance HasElmType Float
+deriving via Double instance HasElmEncoder Aeson.Value Float
+deriving via Double instance HasElmDecoder Aeson.Value Float
+deriving via Double instance HasElmEncoder Text Float
 
 instance HasElmType Bool where
   elmType =
