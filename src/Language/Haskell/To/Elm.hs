@@ -28,6 +28,7 @@ import Data.Proxy
 import Data.String
 import Data.Text (Text)
 import Data.Time
+import Data.Vector (Vector)
 import Data.Void
 import qualified Generics.SOP as SOP
 import GHC.TypeLits
@@ -830,6 +831,18 @@ instance HasElmEncoder Aeson.Value a => HasElmEncoder Aeson.Value (Maybe a) wher
 instance HasElmDecoder Aeson.Value a => HasElmDecoder Aeson.Value (Maybe a) where
   elmDecoder =
     Expression.App "Json.Decode.nullable" (elmDecoder @Aeson.Value @a)
+
+instance HasElmType a => HasElmType (Vector a) where
+  elmType =
+    Type.App "Array.Array" (elmType @a)
+
+instance HasElmEncoder Aeson.Value a => HasElmEncoder Aeson.Value (Vector a) where
+  elmEncoder =
+    Expression.App "Json.Encode.array" (elmEncoder @Aeson.Value @a)
+
+instance HasElmDecoder Aeson.Value a => HasElmDecoder Aeson.Value (Vector a) where
+  elmDecoder =
+    Expression.App "Json.Decode.array" (elmDecoder @Aeson.Value @a)
 
 instance HasElmType a => HasElmType [a] where
   elmType =
