@@ -1,7 +1,6 @@
 {-# language AllowAmbiguousTypes #-}
 {-# language DataKinds #-}
 {-# language DefaultSignatures #-}
-{-# language DerivingVia #-}
 {-# language DuplicateRecordFields #-}
 {-# language FlexibleContexts #-}
 {-# language FlexibleInstances #-}
@@ -12,7 +11,6 @@
 {-# language PartialTypeSignatures #-}
 {-# language PolyKinds #-}
 {-# language ScopedTypeVariables #-}
-{-# language StandaloneDeriving #-}
 {-# language TypeApplications #-}
 {-# language TypeOperators #-}
 {-# language UndecidableInstances #-}
@@ -717,57 +715,121 @@ instance (HasElmType a, KnownNat numParams, SOP.HasDatatypeInfo a, SOP.All2 (Has
 
 -------------
 
+elmBasicInt :: Type v
+elmBasicInt =
+    "Basics.Int"
+
+elmJsonEncodeInt :: Expression v
+elmJsonEncodeInt =
+    "Json.Encode.int"
+
+elmJsonDecodeInt :: Expression v
+elmJsonDecodeInt =
+    "Json.Decode.int"
+
+elmStringFromInt :: Expression v
+elmStringFromInt =
+    "String.fromInt"
+
+-- Int
+
 instance HasElmType Int where
   elmType =
-    "Basics.Int"
+    elmBasicInt
 
 instance HasElmEncoder Aeson.Value Int where
   elmEncoder =
-    "Json.Encode.int"
+    elmJsonEncodeInt
 
 instance HasElmDecoder Aeson.Value Int where
   elmDecoder =
-    "Json.Decode.int"
+    elmJsonDecodeInt
 
-deriving via Int instance HasElmType Int.Int8
-deriving via Int instance HasElmEncoder Aeson.Value Int.Int8
-deriving via Int instance HasElmDecoder Aeson.Value Int.Int8
-deriving via Int instance HasElmEncoder Text Int.Int8
+-- Int8
 
-deriving via Int instance HasElmType Int.Int16
-deriving via Int instance HasElmEncoder Aeson.Value Int.Int16
-deriving via Int instance HasElmDecoder Aeson.Value Int.Int16
-deriving via Int instance HasElmEncoder Text Int.Int16
+instance HasElmType Int.Int8 where
+  elmType =
+    elmBasicInt
 
-deriving via Int instance HasElmType Int.Int32
-deriving via Int instance HasElmEncoder Aeson.Value Int.Int32
-deriving via Int instance HasElmDecoder Aeson.Value Int.Int32
-deriving via Int instance HasElmEncoder Text Int.Int32
+instance HasElmEncoder Aeson.Value Int.Int8 where
+  elmEncoder =
+    elmJsonEncodeInt
 
-deriving via Int instance HasElmType Int.Int64
-deriving via Int instance HasElmEncoder Aeson.Value Int.Int64
-deriving via Int instance HasElmDecoder Aeson.Value Int.Int64
-deriving via Int instance HasElmEncoder Text Int.Int64
+instance HasElmDecoder Aeson.Value Int.Int8 where
+  elmDecoder =
+    elmJsonDecodeInt
 
-deriving via Int instance HasElmType Word.Word8
-deriving via Int instance HasElmEncoder Aeson.Value Word.Word8
-deriving via Int instance HasElmDecoder Aeson.Value Word.Word8
-deriving via Int instance HasElmEncoder Text Word.Word8
+-- Int16
 
-deriving via Int instance HasElmType Word.Word16
-deriving via Int instance HasElmEncoder Aeson.Value Word.Word16
-deriving via Int instance HasElmDecoder Aeson.Value Word.Word16
-deriving via Int instance HasElmEncoder Text Word.Word16
+instance HasElmType Int.Int16 where
+  elmType =
+    elmBasicInt
 
-deriving via Int instance HasElmType Word.Word32
-deriving via Int instance HasElmEncoder Aeson.Value Word.Word32
-deriving via Int instance HasElmDecoder Aeson.Value Word.Word32
-deriving via Int instance HasElmEncoder Text Word.Word32
+instance HasElmEncoder Aeson.Value Int.Int16 where
+  elmEncoder =
+    elmJsonEncodeInt
 
-deriving via Int instance HasElmType Word.Word64
-deriving via Int instance HasElmEncoder Aeson.Value Word.Word64
-deriving via Int instance HasElmDecoder Aeson.Value Word.Word64
-deriving via Int instance HasElmEncoder Text Word.Word64
+instance HasElmDecoder Aeson.Value Int.Int16 where
+  elmDecoder =
+    elmJsonDecodeInt
+
+-- Int32
+
+instance HasElmType Int.Int32 where
+  elmType =
+    elmBasicInt
+
+instance HasElmEncoder Aeson.Value Int.Int32 where
+  elmEncoder =
+    elmJsonEncodeInt
+
+instance HasElmDecoder Aeson.Value Int.Int32 where
+  elmDecoder =
+    elmJsonDecodeInt
+
+-- Word8
+
+instance HasElmType Word.Word8 where
+  elmType =
+    elmBasicInt
+
+instance HasElmEncoder Aeson.Value Word.Word8 where
+  elmEncoder =
+    elmJsonEncodeInt
+
+instance HasElmDecoder Aeson.Value Word.Word8 where
+  elmDecoder =
+    elmJsonDecodeInt
+
+-- Word16
+
+instance HasElmType Word.Word16 where
+  elmType =
+    elmBasicInt
+
+instance HasElmEncoder Aeson.Value Word.Word16 where
+  elmEncoder =
+    elmJsonEncodeInt
+
+instance HasElmDecoder Aeson.Value Word.Word16 where
+  elmDecoder =
+    elmJsonDecodeInt
+
+-- Word32
+
+instance HasElmType Word.Word32 where
+  elmType =
+    elmBasicInt
+
+instance HasElmEncoder Aeson.Value Word.Word32 where
+  elmEncoder =
+    elmJsonEncodeInt
+
+instance HasElmDecoder Aeson.Value Word.Word32 where
+  elmDecoder =
+    elmJsonDecodeInt
+
+-- Double
 
 instance HasElmType Double where
   elmType =
@@ -781,10 +843,21 @@ instance HasElmDecoder Aeson.Value Double where
   elmDecoder =
     "Json.Decode.float"
 
-deriving via Double instance HasElmType Float
-deriving via Double instance HasElmEncoder Aeson.Value Float
-deriving via Double instance HasElmDecoder Aeson.Value Float
-deriving via Double instance HasElmEncoder Text Float
+-- Float
+
+instance HasElmType Float where
+  elmType =
+    "Basics.Float"
+
+instance HasElmEncoder Aeson.Value Float where
+  elmEncoder =
+    "Json.Encode.float"
+
+instance HasElmDecoder Aeson.Value Float where
+  elmDecoder =
+    "Json.Decode.float"
+
+-- Bool
 
 instance HasElmType Bool where
   elmType =
@@ -797,6 +870,8 @@ instance HasElmEncoder Aeson.Value Bool where
 instance HasElmDecoder Aeson.Value Bool where
   elmDecoder =
     "Json.Decode.bool"
+
+-- Text
 
 instance HasElmType Text where
   elmType =
@@ -816,9 +891,37 @@ instance HasElmEncoder Text Char where
 
 instance HasElmEncoder Text Int where
   elmEncoder =
-    "String.fromInt"
+    elmStringFromInt
+
+instance HasElmEncoder Text Int.Int8 where
+  elmEncoder =
+    elmStringFromInt
+
+instance HasElmEncoder Text Int.Int16 where
+  elmEncoder =
+    elmStringFromInt
+
+instance HasElmEncoder Text Int.Int32 where
+  elmEncoder =
+    elmStringFromInt
+
+instance HasElmEncoder Text Word.Word8 where
+  elmEncoder =
+    elmStringFromInt
+
+instance HasElmEncoder Text Word.Word16 where
+  elmEncoder =
+    elmStringFromInt
+
+instance HasElmEncoder Text Word.Word32 where
+  elmEncoder =
+    elmStringFromInt
 
 instance HasElmEncoder Text Double where
+  elmEncoder =
+    "String.fromFloat"
+
+instance HasElmEncoder Text Float where
   elmEncoder =
     "String.fromFloat"
 
@@ -829,6 +932,8 @@ instance HasElmEncoder Aeson.Value Text where
 instance HasElmDecoder Aeson.Value Text where
   elmDecoder =
     "Json.Decode.string"
+
+-- Char
 
 instance HasElmType Char where
   elmType =
@@ -854,6 +959,8 @@ instance HasElmDecoder Aeson.Value Char where
           ]
       )
 
+-- UTCTime
+
 instance HasElmType UTCTime where
   elmType =
     "Time.Posix"
@@ -865,6 +972,8 @@ instance HasElmEncoder Aeson.Value UTCTime where
 instance HasElmDecoder Aeson.Value UTCTime where
   elmDecoder =
     "Iso8601.decoder"
+
+-- Maybe
 
 instance HasElmEncoder a b => HasElmEncoder (Maybe a) (Maybe b) where
   elmEncoder = Expression.App "Maybe.map" (elmEncoder @a @b)
@@ -881,6 +990,8 @@ instance HasElmDecoder Aeson.Value a => HasElmDecoder Aeson.Value (Maybe a) wher
   elmDecoder =
     Expression.App "Json.Decode.nullable" (elmDecoder @Aeson.Value @a)
 
+-- Vector
+
 instance HasElmType a => HasElmType (Vector a) where
   elmType =
     Type.App "Array.Array" (elmType @a)
@@ -893,6 +1004,8 @@ instance HasElmDecoder Aeson.Value a => HasElmDecoder Aeson.Value (Vector a) whe
   elmDecoder =
     Expression.App "Json.Decode.array" (elmDecoder @Aeson.Value @a)
 
+-- List
+
 instance HasElmType a => HasElmType [a] where
   elmType =
     Type.App "List.List" (elmType @a)
@@ -904,6 +1017,8 @@ instance HasElmEncoder Aeson.Value a => HasElmEncoder Aeson.Value [a] where
 instance HasElmDecoder Aeson.Value a => HasElmDecoder Aeson.Value [a] where
   elmDecoder =
     Expression.App "Json.Decode.list" (elmDecoder @Aeson.Value @a)
+
+-- Tuple
 
 instance (HasElmType a, HasElmType b) => HasElmType (a, b) where
   elmType =
