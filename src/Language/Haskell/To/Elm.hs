@@ -715,119 +715,103 @@ instance (HasElmType a, KnownNat numParams, SOP.HasDatatypeInfo a, SOP.All2 (Has
 
 -------------
 
-elmBasicInt :: Type v
-elmBasicInt =
-    "Basics.Int"
-
-elmJsonEncodeInt :: Expression v
-elmJsonEncodeInt =
-    "Json.Encode.int"
-
-elmJsonDecodeInt :: Expression v
-elmJsonDecodeInt =
-    "Json.Decode.int"
-
-elmStringFromInt :: Expression v
-elmStringFromInt =
-    "String.fromInt"
-
 -- Int
 
 instance HasElmType Int where
   elmType =
-    elmBasicInt
+    "Basics.Int"
 
 instance HasElmEncoder Aeson.Value Int where
   elmEncoder =
-    elmJsonEncodeInt
+    "Json.Encode.int"
 
 instance HasElmDecoder Aeson.Value Int where
   elmDecoder =
-    elmJsonDecodeInt
+    "Json.Decode.int"
 
 -- Int8
 
 instance HasElmType Int.Int8 where
   elmType =
-    elmBasicInt
+    "Basics.Int"
 
 instance HasElmEncoder Aeson.Value Int.Int8 where
   elmEncoder =
-    elmJsonEncodeInt
+    "Json.Encode.int"
 
 instance HasElmDecoder Aeson.Value Int.Int8 where
   elmDecoder =
-    elmJsonDecodeInt
+    "Json.Decode.int"
 
 -- Int16
 
 instance HasElmType Int.Int16 where
   elmType =
-    elmBasicInt
+    "Basics.Int"
 
 instance HasElmEncoder Aeson.Value Int.Int16 where
   elmEncoder =
-    elmJsonEncodeInt
+    "Json.Encode.int"
 
 instance HasElmDecoder Aeson.Value Int.Int16 where
   elmDecoder =
-    elmJsonDecodeInt
+    "Json.Decode.int"
 
 -- Int32
 
 instance HasElmType Int.Int32 where
   elmType =
-    elmBasicInt
+    "Basics.Int"
 
 instance HasElmEncoder Aeson.Value Int.Int32 where
   elmEncoder =
-    elmJsonEncodeInt
+    "Json.Encode.int"
 
 instance HasElmDecoder Aeson.Value Int.Int32 where
   elmDecoder =
-    elmJsonDecodeInt
+    "Json.Decode.int"
 
 -- Word8
 
 instance HasElmType Word.Word8 where
   elmType =
-    elmBasicInt
+    "Basics.Int"
 
 instance HasElmEncoder Aeson.Value Word.Word8 where
   elmEncoder =
-    elmJsonEncodeInt
+    "Json.Encode.int"
 
 instance HasElmDecoder Aeson.Value Word.Word8 where
   elmDecoder =
-    elmJsonDecodeInt
+    "Json.Decode.int"
 
 -- Word16
 
 instance HasElmType Word.Word16 where
   elmType =
-    elmBasicInt
+    "Basics.Int"
 
 instance HasElmEncoder Aeson.Value Word.Word16 where
   elmEncoder =
-    elmJsonEncodeInt
+    "Json.Encode.int"
 
 instance HasElmDecoder Aeson.Value Word.Word16 where
   elmDecoder =
-    elmJsonDecodeInt
+    "Json.Decode.int"
 
 -- Word32
 
 instance HasElmType Word.Word32 where
   elmType =
-    elmBasicInt
+    "Basics.Int"
 
 instance HasElmEncoder Aeson.Value Word.Word32 where
   elmEncoder =
-    elmJsonEncodeInt
+    "Json.Encode.int"
 
 instance HasElmDecoder Aeson.Value Word.Word32 where
   elmDecoder =
-    elmJsonDecodeInt
+    "Json.Decode.int"
 
 -- Double
 
@@ -891,31 +875,31 @@ instance HasElmEncoder Text Char where
 
 instance HasElmEncoder Text Int where
   elmEncoder =
-    elmStringFromInt
+    "String.fromInt"
 
 instance HasElmEncoder Text Int.Int8 where
   elmEncoder =
-    elmStringFromInt
+    "String.fromInt"
 
 instance HasElmEncoder Text Int.Int16 where
   elmEncoder =
-    elmStringFromInt
+    "String.fromInt"
 
 instance HasElmEncoder Text Int.Int32 where
   elmEncoder =
-    elmStringFromInt
+    "String.fromInt"
 
 instance HasElmEncoder Text Word.Word8 where
   elmEncoder =
-    elmStringFromInt
+    "String.fromInt"
 
 instance HasElmEncoder Text Word.Word16 where
   elmEncoder =
-    elmStringFromInt
+    "String.fromInt"
 
 instance HasElmEncoder Text Word.Word32 where
   elmEncoder =
-    elmStringFromInt
+    "String.fromInt"
 
 instance HasElmEncoder Text Double where
   elmEncoder =
