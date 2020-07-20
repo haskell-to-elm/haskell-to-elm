@@ -2,6 +2,9 @@
 
 ## Unreleased changes
 
+- Add instances for some more numeric Haskell types: `Float`, `Int8`, `Int16`, `Int32`, `Word8`, `Word16`, and `Word32`
+- Add instances for Elm `Array`s, which correspond to Haskell `Vector`s
+
 ## 0.3.1.0
 
 - Generate correct JSON coders for record constructors for types with multiple constructors (https://github.com/folq/haskell-to-elm/issues/7)
