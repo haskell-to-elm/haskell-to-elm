@@ -28,6 +28,7 @@ import Data.Maybe (catMaybes)
 import Data.Proxy
 import Data.String
 import Data.Text (Text)
+import qualified Data.Text as Text
 import Data.Time
 import Data.Vector (Vector)
 import Data.Void
@@ -457,13 +458,10 @@ instance (HasElmType a, KnownNat numParams, SOP.HasDatatypeInfo a, SOP.All2 (Has
                 (Bound.toScope $ Expression.Case (pure $ Bound.B ()) $
                   [ ( Pattern.String $ constructorJSONName constr
                     , Bound.toScope $
-                      decodeConstructor contentsName qualifiedConstr $
+                      decodeConstructor contentsName (qualifyConstr constr) $
                       second (fmap $ Bound.F . Bound.F) <$> shape
                     )
                 | (constr, shape) <- constrs
-                , let
-                    qualifiedConstr =
-                      Expression.Global $ Name.Qualified moduleName_ $ fromString constr
                 ]
                 ++
                 [ ( Pattern.Wildcard
@@ -472,7 +470,17 @@ instance (HasElmType a, KnownNat numParams, SOP.HasDatatypeInfo a, SOP.All2 (Has
                 ]
               ))
 
-          _ -> error "Only the DataAeson.TaggedObject sumEncoding is currently supported"
+          Aeson.ObjectWithSingleField ->
+            Expression.App "Json.Decode.oneOf" $ Expression.List
+              [ decodeConstructor (Text.unpack $ constructorJSONName constr) (qualifyConstr constr) shape
+              | (constr, shape) <- constrs
+              ]
+
+          _ -> error "Only the TaggedObject and ObjectWithSingleField sumEncodings are currently supported"
+
+        where
+          qualifyConstr :: String -> Expression v
+          qualifyConstr = Expression.Global . Name.Qualified moduleName_ . fromString
 
 -- ** JSON encoders
 
@@ -711,7 +719,25 @@ instance (HasElmType a, KnownNat numParams, SOP.HasDatatypeInfo a, SOP.All2 (Has
                     (Expression.App "Json.Encode.string" $ Expression.String $ constructorJSONName constr)
               ]
 
-          _ -> error "Only the DataAeson.TaggedObject sumEncoding is currently supported"
+          Aeson.ObjectWithSingleField ->
+            Expression.Case expr
+              [ case constrShape of
+                  ConstructorShape constrFields ->
+                    ( Pattern.Con (elmConstr constr) (Pattern.Var . fst <$> zip [0..] constrFields)
+                    , Bound.toScope $
+                      Expression.App "Json.Encode.object" $
+                      Expression.List
+                        [ Expression.tuple
+                          (Expression.String $ constructorJSONName constr)
+                          (encodeConstructorFields constrFields)
+                        | not $ null constrFields
+                        ]
+                    )
+                  RecordConstructorShape _recordFields -> error "TODO"
+              | (constr, constrShape) <- constrs
+              ]
+
+          _ -> error "Only the TaggedObject and ObjectWithSingleField sumEncodings are currently supported"
 
 -------------
 
