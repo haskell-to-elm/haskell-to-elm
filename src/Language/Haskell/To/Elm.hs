@@ -733,7 +733,20 @@ instance (HasElmType a, KnownNat numParams, SOP.HasDatatypeInfo a, SOP.All2 (Has
                         | not $ null constrFields
                         ]
                     )
-                  RecordConstructorShape _recordFields -> error "TODO"
+                  RecordConstructorShape recordFields ->
+                    ( Pattern.Con (elmConstr constr) [Pattern.Var 0]
+                    , Bound.toScope $
+                      Expression.App "Json.Encode.object" $
+                        Expression.List
+                          [ Expression.tuple
+                              (Expression.String $ constructorJSONName constr)
+                              (Expression.App "Json.Encode.object" $
+                                encodedRecordFieldList
+                                  (second (second $ fmap Bound.F) <$> recordFields)
+                                  (pure $ Bound.B 0)
+                              )
+                          ]
+                    )
               | (constr, constrShape) <- constrs
               ]
 
