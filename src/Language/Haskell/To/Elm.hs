@@ -608,10 +608,12 @@ instance (HasElmType a, KnownNat numParams, SOP.HasDatatypeInfo a, SOP.All2 (Has
                 )
               , ( Pattern.Con "Maybe.Just" [Pattern.Var 0]
                 , Bound.toScope $
-                  fmap Bound.F $
-                  Expression.tuple
-                    (jsonFieldName fname)
-                    (Expression.App encoder (Expression.App (Expression.Proj $ elmField fname) e))
+                  Expression.List
+                  [ Bound.F <$>
+                    Expression.tuple
+                      (jsonFieldName fname)
+                      (Expression.App encoder (Expression.App (Expression.Proj $ elmField fname) e))
+                  ]
                 )
               ]
             ]
