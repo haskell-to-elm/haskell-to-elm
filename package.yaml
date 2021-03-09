@@ -1,5 +1,5 @@
 name:                haskell-to-elm
-version:             0.3.1.0
+version:             0.3.2.0
 github:              "folq/haskell-to-elm"
 license:             BSD3
 author:              "Olle Fredriksson"

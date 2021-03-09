@@ -1,13 +1,13 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.34.1.
+-- This file has been generated from package.yaml by hpack version 0.34.3.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 2d2dc7a5334b1daab39b69c47f77720140c0a5d075d14ffcab4de04a56522223
+-- hash: 6d0cc0620261f326ace9a05c03ea9574c7c4d9e535af48fa989eb0bf9411719e
 
 name:           haskell-to-elm
-version:        0.3.1.0
+version:        0.3.2.0
 synopsis:       Generate Elm types and JSON encoders and decoders from Haskell types
 description:    Please see the README on GitHub at <https://github.com/folq/haskell-to-elm#readme>
 category:       Elm, Compiler, Language
@@ -18,7 +18,8 @@ maintainer:     fredriksson.olle@gmail.com
 copyright:      2019 Olle Fredriksson
 license:        BSD3
 license-file:   LICENSE
-tested-with:    GHC == 8.4.3, GHC == 8.6.5, GHC == 8.8.3
+tested-with:
+    GHC == 8.4.3, GHC == 8.6.5, GHC == 8.8.3
 build-type:     Simple
 extra-source-files:
     README.md

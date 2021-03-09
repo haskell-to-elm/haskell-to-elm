@@ -2,6 +2,8 @@
 
 ## Unreleased changes
 
+## 0.3.2.0
+
 - Fix support for the Aeson option `omitNothingFields`
 - Add instances for some more numeric Haskell types: `Float`, `Int8`, `Int16`, `Int32`, `Word8`, `Word16`, and `Word32`
 - Add instances for Elm `Array`s, which correspond to Haskell `Vector`s
