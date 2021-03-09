@@ -5,7 +5,6 @@
 {-# language FlexibleContexts #-}
 {-# language FlexibleInstances #-}
 {-# language GADTs #-}
-{-# language KindSignatures #-}
 {-# language MultiParamTypeClasses #-}
 {-# language OverloadedStrings #-}
 {-# language PartialTypeSignatures #-}
@@ -259,18 +258,19 @@ instance (HasElmType a, KnownNat numParams, SOP.HasDatatypeInfo a, SOP.All2 (Has
     Definition.Constant decoderName numParams parameterisedType $
       parameteriseBody $
         case dataShape @a $ ConstraintFun constraintFun of
-          [(_cname, RecordConstructorShape fields)] ->
-            decodeRecordFields fields $
-            Expression.App "Json.Decode.succeed" $
-            case Type.appsView (elmType @a) of
-              (Type.Record fieldTypes, _) ->
-                explicitRecordConstructor $ fst <$> fieldTypes
+          cs@[(_, RecordConstructorShape _)] -> do
+            let
+              recordConstructor =
+                case Type.appsView (elmType @a) of
+                  (Type.Record fieldTypes, _) ->
+                    explicitRecordConstructor $ fst <$> fieldTypes
 
-              _ ->
-                Expression.Global typeName
+                  _ ->
+                    Expression.Global typeName
+            decodeConstructors (Just recordConstructor) cs
 
           cs ->
-            decodeConstructors cs
+            decodeConstructors Nothing cs
     where
       constraintFun :: forall v t. Dict (HasElmDecoder Aeson.Value t) -> (Type Void, Expression v)
       constraintFun Dict =
@@ -371,15 +371,15 @@ instance (HasElmType a, KnownNat numParams, SOP.HasDatatypeInfo a, SOP.All2 (Has
       elmField :: String -> Name.Field
       elmField = fromString . fieldLabelModifier options
 
-      decodeConstructor :: String -> Expression v -> ConstructorShape (Type Void, Expression v) -> Expression v
-      decodeConstructor _ constr (ConstructorShape []) =
+      decodeConstructor :: Maybe (Expression v) -> String -> Expression v -> ConstructorShape (Type Void, Expression v) -> Expression v
+      decodeConstructor _maybeRecordConstructor _ constr (ConstructorShape []) =
         Expression.App "Json.Decode.succeed" constr
 
-      decodeConstructor contentsName constr (ConstructorShape [(_, fieldDecoder)]) =
+      decodeConstructor _maybeRecordConstructor contentsName constr (ConstructorShape [(_, fieldDecoder)]) =
         Expression.App "Json.Decode.succeed" constr Expression.|>
           Expression.apps "Json.Decode.Pipeline.required" [Expression.String (fromString contentsName), fieldDecoder]
 
-      decodeConstructor contentsName constr (ConstructorShape fields) =
+      decodeConstructor _maybeRecordConstructor contentsName constr (ConstructorShape fields) =
         Expression.apps
           "Json.Decode.field"
           [ Expression.String (fromString contentsName)
@@ -393,16 +393,22 @@ instance (HasElmType a, KnownNat numParams, SOP.HasDatatypeInfo a, SOP.All2 (Has
             ]
           ]
 
-      decodeConstructor _contentsName constr (RecordConstructorShape fields) =
-        Expression.apps "Json.Decode.map"
-          [ constr
-          , decodeRecordFields fields $
-            Expression.App "Json.Decode.succeed" $
-              explicitRecordConstructor $ elmField . fst <$> fields
-          ]
+      decodeConstructor maybeRecordConstructor _contentsName constr (RecordConstructorShape fields) =
+        case maybeRecordConstructor of
+          Nothing ->
+            Expression.apps "Json.Decode.map"
+              [ constr
+              , decodeRecordFields fields $
+                Expression.App "Json.Decode.succeed" $
+                  explicitRecordConstructor $ elmField . fst <$> fields
+              ]
 
-      decodeConstructors :: [(String, ConstructorShape (Type Void, Expression v))] -> Expression v
-      decodeConstructors [(constr, constrShape)]
+          Just recordConstructor ->
+            decodeRecordFields fields $
+              Expression.App "Json.Decode.succeed" recordConstructor
+
+      decodeConstructors :: Maybe (Expression v) -> [(String, ConstructorShape (Type Void, Expression v))] -> Expression v
+      decodeConstructors maybeRecordConstructor [(constr, constrShape)]
         | not $ Aeson.tagSingleConstructors aesonOptions =
           let
             qualifiedConstr =
@@ -423,14 +429,20 @@ instance (HasElmType a, KnownNat numParams, SOP.HasDatatypeInfo a, SOP.All2 (Has
                 ]
 
             RecordConstructorShape fields ->
-              Expression.apps "Json.Decode.map"
-                [ qualifiedConstr
-                , decodeRecordFields fields $
-                  Expression.App "Json.Decode.succeed" $
-                    explicitRecordConstructor $ elmField . fst <$> fields
-                ]
+              case maybeRecordConstructor of
+                Nothing ->
+                  Expression.apps "Json.Decode.map"
+                    [ qualifiedConstr
+                    , decodeRecordFields fields $
+                      Expression.App "Json.Decode.succeed" $
+                        explicitRecordConstructor $ elmField . fst <$> fields
+                    ]
 
-      decodeConstructors constrs
+                Just recordConstructor ->
+                   decodeRecordFields fields $
+                     Expression.App "Json.Decode.succeed" recordConstructor
+
+      decodeConstructors _maybeRecordConstructor constrs
         | Aeson.allNullaryToStringTag aesonOptions && all (nullary . snd) constrs =
           "Json.Decode.string" Expression.|> Expression.App "Json.Decode.andThen" (Expression.Lam
             (Bound.toScope $ Expression.Case (pure $ Bound.B ()) $
@@ -449,7 +461,7 @@ instance (HasElmType a, KnownNat numParams, SOP.HasDatatypeInfo a, SOP.All2 (Has
               ]
             ))
 
-      decodeConstructors constrs =
+      decodeConstructors maybeRecordConstructor constrs =
         case Aeson.sumEncoding aesonOptions of
           Aeson.TaggedObject tagName contentsName ->
             Expression.apps "Json.Decode.field" [Expression.String $ fromString tagName, "Json.Decode.string"] Expression.|>
@@ -457,8 +469,8 @@ instance (HasElmType a, KnownNat numParams, SOP.HasDatatypeInfo a, SOP.All2 (Has
                 (Bound.toScope $ Expression.Case (pure $ Bound.B ()) $
                   [ ( Pattern.String $ constructorJSONName constr
                     , Bound.toScope $
-                      decodeConstructor contentsName qualifiedConstr $
-                      second (fmap $ Bound.F . Bound.F) <$> shape
+                      Bound.F . Bound.F <$>
+                      decodeConstructor maybeRecordConstructor contentsName qualifiedConstr shape
                     )
                 | (constr, shape) <- constrs
                 , let
