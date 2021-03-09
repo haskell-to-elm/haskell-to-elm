@@ -5,7 +5,6 @@
 {-# language FlexibleContexts #-}
 {-# language FlexibleInstances #-}
 {-# language GADTs #-}
-{-# language KindSignatures #-}
 {-# language MultiParamTypeClasses #-}
 {-# language OverloadedStrings #-}
 {-# language PartialTypeSignatures #-}
