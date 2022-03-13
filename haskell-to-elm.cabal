@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 2dcd404f75832124e64dabae4dd441f109d097314d99db2482969c7faeb0d734
+-- hash: edc7c627c0353ff516c3cbac1e71dbab5da8cf86afd07b981fd67b00c606789e
 
 name:           haskell-to-elm
 version:        0.3.1.0
@@ -46,7 +46,7 @@ library
       aeson >=1.4.0
     , base >=4.7 && <5
     , bound >=2.0.0
-    , elm-syntax ==0.3.0.*
+    , elm-syntax >=0.3.0 && <0.3.3
     , generics-sop >=0.4.0 && <0.6.0
     , text >=1.2.0
     , time >=1.8.0
@@ -67,7 +67,7 @@ executable deriving-via-example
       aeson >=1.4.0
     , base >=4.7 && <5
     , bound >=2.0.0
-    , elm-syntax ==0.3.0.*
+    , elm-syntax >=0.3.0 && <0.3.3
     , generics-sop >=0.4.0 && <0.6.0
     , haskell-to-elm
     , text >=1.2.0
@@ -91,7 +91,7 @@ executable parameterised-example
       aeson >=1.4.0
     , base >=4.7 && <5
     , bound >=2.0.0
-    , elm-syntax ==0.3.0.*
+    , elm-syntax >=0.3.0 && <0.3.3
     , generics-sop >=0.4.0 && <0.6.0
     , haskell-to-elm
     , text >=1.2.0
@@ -115,7 +115,7 @@ executable user-example
       aeson >=1.4.0
     , base >=4.7 && <5
     , bound >=2.0.0
-    , elm-syntax ==0.3.0.*
+    , elm-syntax >=0.3.0 && <0.3.3
     , generics-sop >=0.4.0 && <0.6.0
     , haskell-to-elm
     , text >=1.2.0
@@ -138,7 +138,7 @@ test-suite haskell-to-elm-test
       aeson >=1.4.0
     , base >=4.7 && <5
     , bound >=2.0.0
-    , elm-syntax ==0.3.0.*
+    , elm-syntax >=0.3.0 && <0.3.3
     , generics-sop >=0.4.0 && <0.6.0
     , haskell-to-elm
     , text >=1.2.0
