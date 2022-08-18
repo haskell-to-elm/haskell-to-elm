@@ -1,10 +1,8 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.34.3.
+-- This file has been generated from package.yaml by hpack version 0.34.4.
 --
 -- see: https://github.com/sol/hpack
---
--- hash: 6d0cc0620261f326ace9a05c03ea9574c7c4d9e535af48fa989eb0bf9411719e
 
 name:           haskell-to-elm
 version:        0.3.2.0
@@ -18,9 +16,9 @@ maintainer:     fredriksson.olle@gmail.com
 copyright:      2019 Olle Fredriksson
 license:        BSD3
 license-file:   LICENSE
+build-type:     Simple
 tested-with:
     GHC == 8.4.3, GHC == 8.6.5, GHC == 8.8.3
-build-type:     Simple
 extra-source-files:
     README.md
     CHANGELOG.md
@@ -46,7 +44,7 @@ library
       aeson >=1.4.0
     , base >=4.7 && <5
     , bound >=2.0.0
-    , elm-syntax >=0.3.0 && <0.3.1
+    , elm-syntax >=0.3.0 && <0.4
     , generics-sop >=0.4.0 && <0.6.0
     , text >=1.2.0
     , time >=1.8.0
@@ -67,7 +65,7 @@ executable deriving-via-example
       aeson >=1.4.0
     , base >=4.7 && <5
     , bound >=2.0.0
-    , elm-syntax >=0.3.0 && <0.3.1
+    , elm-syntax >=0.3.0 && <0.4
     , generics-sop >=0.4.0 && <0.6.0
     , haskell-to-elm
     , text >=1.2.0
@@ -91,7 +89,7 @@ executable parameterised-example
       aeson >=1.4.0
     , base >=4.7 && <5
     , bound >=2.0.0
-    , elm-syntax >=0.3.0 && <0.3.1
+    , elm-syntax >=0.3.0 && <0.4
     , generics-sop >=0.4.0 && <0.6.0
     , haskell-to-elm
     , text >=1.2.0
@@ -115,7 +113,7 @@ executable user-example
       aeson >=1.4.0
     , base >=4.7 && <5
     , bound >=2.0.0
-    , elm-syntax >=0.3.0 && <0.3.1
+    , elm-syntax >=0.3.0 && <0.4
     , generics-sop >=0.4.0 && <0.6.0
     , haskell-to-elm
     , text >=1.2.0
@@ -138,7 +136,7 @@ test-suite haskell-to-elm-test
       aeson >=1.4.0
     , base >=4.7 && <5
     , bound >=2.0.0
-    , elm-syntax >=0.3.0 && <0.3.1
+    , elm-syntax >=0.3.0 && <0.4
     , generics-sop >=0.4.0 && <0.6.0
     , haskell-to-elm
     , text >=1.2.0
