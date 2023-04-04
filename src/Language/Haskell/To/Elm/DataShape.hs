@@ -31,9 +31,10 @@ newtype ConstraintFun constraint a = ConstraintFun (forall t. Dict (constraint t
 dataShape
   :: forall typ constraint a
   . (All2 constraint (Code typ), HasDatatypeInfo typ)
-  => ConstraintFun constraint a
+  => Proxy typ 
+  -> ConstraintFun constraint a
   -> DataShape a
-dataShape f =
+dataShape _ f =
   constructorShapes @(Code typ) @constraint f $ constructorInfo $ datatypeInfo $ Proxy @typ
 
 constructorShapes
