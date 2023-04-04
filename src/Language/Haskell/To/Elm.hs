@@ -173,7 +173,7 @@ instance (DeriveParameterisedElmTypeDefinition (numParams + 1) (f (Parameter num
 
 instance (KnownNat numParams, SOP.HasDatatypeInfo a, SOP.All2 HasElmType (SOP.Code a)) => DeriveParameterisedElmTypeDefinition numParams (a :: Data.Kind.Type) where
   deriveParameterisedElmTypeDefinition options name =
-    case dataShape @a $ ConstraintFun constraintFun of
+    case dataShape @a Proxy $ ConstraintFun constraintFun of
       [(_cname, RecordConstructorShape fields)] ->
         Definition.Alias name numParams (bindTypeParameters $ Type.Record $ first fieldName <$> fields)
 
@@ -257,7 +257,7 @@ instance (HasElmType a, KnownNat numParams, SOP.HasDatatypeInfo a, SOP.All2 (Has
   deriveParameterisedElmDecoderDefinition options aesonOptions decoderName =
     Definition.Constant decoderName numParams parameterisedType $
       parameteriseBody $
-        case dataShape @a $ ConstraintFun constraintFun of
+        case dataShape @a Proxy $ ConstraintFun constraintFun of
           [(_cname, RecordConstructorShape fields)] ->
             decodeRecordFields fields $
             Expression.App "Json.Decode.succeed" $
@@ -515,7 +515,7 @@ instance (HasElmType a, KnownNat numParams, SOP.HasDatatypeInfo a, SOP.All2 (Has
     Definition.Constant encoderName numParams parameterisedType $
       parameteriseBody $
         Expression.Lam $ Bound.toScope $
-          case dataShape @a $ ConstraintFun constraintFun of
+          case dataShape @a Proxy $ ConstraintFun constraintFun of
             [(_cname, RecordConstructorShape fields)] ->
               Expression.App "Json.Encode.object" $
               encodedRecordFieldList fields $ pure $ Bound.B ()
