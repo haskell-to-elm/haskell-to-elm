@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.34.3.
+-- This file has been generated from package.yaml by hpack version 0.35.1.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 6d0cc0620261f326ace9a05c03ea9574c7c4d9e535af48fa989eb0bf9411719e
+-- hash: 10adcf8c94c36c6b22300b17f0294b31eb41f521c841c126a17306e52bccc87e
 
 name:           haskell-to-elm
 version:        0.3.2.0
@@ -19,7 +19,7 @@ copyright:      2019 Olle Fredriksson
 license:        BSD3
 license-file:   LICENSE
 tested-with:
-    GHC == 8.4.3, GHC == 8.6.5, GHC == 8.8.3
+    GHC == 8.4.3, GHC == 8.6.5, GHC == 8.8.3, GHC == 9.2.5
 build-type:     Simple
 extra-source-files:
     README.md
