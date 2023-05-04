@@ -1,5 +1,6 @@
-resolver: lts-15.15
+resolver: lts-20.19
 packages:
 - .
 extra-deps:
-- elm-syntax-0.3.0.0
+- github: folq/elm-syntax
+  commit: 2bc46c09139b9d890721cc33a961ab96c9b46684
