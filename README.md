@@ -1,4 +1,4 @@
-# haskell-to-elm [![Build Status](https://travis-ci.com/haskell-to-elm/haskell-to-elm.svg?branch=master)](https://travis-ci.com/haskell-to-elm/haskell-to-elm) [![Hackage](https://img.shields.io/hackage/v/haskell-to-elm.svg)](https://hackage.haskell.org/package/haskell-to-elm)
+# haskell-to-elm [![Hackage](https://img.shields.io/hackage/v/haskell-to-elm.svg)](https://hackage.haskell.org/package/haskell-to-elm)
 
 `haskell-to-elm` is a library that takes Haskell type definitions as input and
 generates matching Elm type definitions and JSON encoders and decoders that
