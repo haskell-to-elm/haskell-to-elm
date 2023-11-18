@@ -1,6 +1,6 @@
 name:                haskell-to-elm
 version:             0.3.2.0
-github:              "folq/haskell-to-elm"
+github:              "haskell-to-elm/haskell-to-elm"
 license:             BSD3
 author:              "Olle Fredriksson"
 maintainer:          "fredriksson.olle@gmail.com"
@@ -18,7 +18,7 @@ category:            Elm, Compiler, Language
 # To avoid duplicated efforts in documentation and dealing with the
 # complications of embedding Haddock markup inside cabal files, it is
 # common to point users to the README.md file.
-description:         Please see the README on GitHub at <https://github.com/folq/haskell-to-elm#readme>
+description:         Please see the README on GitHub at <https://github.com/haskell-to-elm/haskell-to-elm#readme>
 
 dependencies:
 - aeson >= 1.4.0

@@ -1,4 +1,4 @@
-# haskell-to-elm [![Build Status](https://travis-ci.com/folq/haskell-to-elm.svg?branch=master)](https://travis-ci.com/folq/haskell-to-elm) [![Hackage](https://img.shields.io/hackage/v/haskell-to-elm.svg)](https://hackage.haskell.org/package/haskell-to-elm)
+# haskell-to-elm [![Build Status](https://travis-ci.com/haskell-to-elm/haskell-to-elm.svg?branch=master)](https://travis-ci.com/haskell-to-elm/haskell-to-elm) [![Hackage](https://img.shields.io/hackage/v/haskell-to-elm.svg)](https://hackage.haskell.org/package/haskell-to-elm)
 
 `haskell-to-elm` is a library that takes Haskell type definitions as input and
 generates matching Elm type definitions and JSON encoders and decoders that
@@ -56,7 +56,7 @@ With `haskell-to-elm` as part of your build pipeline you can make sure that the
 frontend is always in sync with your backend, and get type errors in your
 frontend code when you change your backend types.
 
-The companion library [servant-to-elm](https://github.com/folq/servant-to-elm) also
+The companion library [servant-to-elm](https://github.com/haskell-to-elm/servant-to-elm) also
 lets you generate Elm client libraries for your Servant APIs.
 
 ## Basic usage
@@ -256,20 +256,20 @@ risk mismatched JSON formats.
 ## Roadmap
 
 - [x] Derive JSON encoders and generically
-  - [ ] Support all Aeson options ([issue here](https://github.com/folq/haskell-to-elm/issues/10))
+  - [ ] Support all Aeson options ([issue here](https://github.com/haskell-to-elm/haskell-to-elm/issues/10))
 - [x] Pretty-print the Elm AST
-  - [x] Separate pretty printing from code generation: [elm-syntax](https://github.com/folq/elm-syntax)
+  - [x] Separate pretty printing from code generation: [elm-syntax](https://github.com/haskell-to-elm/elm-syntax)
 - [x] Generate Elm modules
-- [x] Servant client library generation: [servant-to-elm](https://github.com/folq/servant-to-elm)
-- [x] Test that encoding and decoding round-trip: [haskell-to-elm-test](https://github.com/folq/haskell-to-elm-test)
+- [x] Servant client library generation: [servant-to-elm](https://github.com/haskell-to-elm/servant-to-elm)
+- [x] Test that encoding and decoding round-trip: [haskell-to-elm-test](https://github.com/haskell-to-elm/haskell-to-elm-test)
 - [x] Support parameterised types
 
 ## Related projects
 
 Libraries that use or are used by haskell-to-elm:
-- [elm-syntax](https://github.com/folq/elm-syntax) defines Haskell ASTs for Elm's syntax, and lets us pretty-print it.
-- [servant-to-elm](https://github.com/folq/servant-to-elm) can be used to generate Elm client libraries from Servant APIs.
-- [haskell-to-elm-test](https://github.com/folq/haskell-to-elm-test) does end-to-end testing of this library.
+- [elm-syntax](https://github.com/haskell-to-elm/elm-syntax) defines Haskell ASTs for Elm's syntax, and lets us pretty-print it.
+- [servant-to-elm](https://github.com/haskell-to-elm/servant-to-elm) can be used to generate Elm client libraries from Servant APIs.
+- [haskell-to-elm-test](https://github.com/haskell-to-elm/haskell-to-elm-test) does end-to-end testing of this library.
 
 Others:
 - [elm-export](http://hackage.haskell.org/package/elm-export)
