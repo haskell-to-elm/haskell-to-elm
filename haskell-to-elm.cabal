@@ -21,6 +21,10 @@ tested-with:
     , GHC == 8.4.3
     , GHC == 8.6.5
     , GHC == 8.8.3
+    , GHC == 8.10.7
+    , GHC == 9.0.2
+    , GHC == 9.2.8
+    , GHC == 9.4.8
 extra-source-files:
     README.md
     CHANGELOG.md
