@@ -1,5 +1,5 @@
-resolver: lts-19.18
+resolver: lts-21.22
 packages:
 - .
 extra-deps:
-  - elm-syntax-0.3.2.0
+  - elm-syntax-0.3.3.0

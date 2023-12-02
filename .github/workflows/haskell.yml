@@ -143,3 +143,25 @@ jobs:
       - name: Cabal Test
         run: |
           cabal test all
+
+  stack-build:
+    name: Haskell Build (stack)
+    runs-on: ubuntu-latest # or macOS-latest, or windows-latest
+    strategy:
+      fail-fast: false
+    steps:
+      # Checkout
+      - uses: actions/checkout@v3
+        
+      # Setup
+      - name: Setup Haskell
+        uses: haskell-actions/setup@v2
+        id: setup
+        with:
+          stack-version: latest
+
+      # Stack build
+      - name: Stack Bulid
+        run: |
+          stack build
+
